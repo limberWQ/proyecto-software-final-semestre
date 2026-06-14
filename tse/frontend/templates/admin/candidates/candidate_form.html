@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Nuevo candidato · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">
+      <a href="{{ url_for('panel.detalle_eleccion', eleccion_id=eleccion.id) }}">{{ eleccion.titulo }}</a> › Candidatos
+    </div>
+    <h1>Nuevo candidato</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width:680px">
+  <form method="POST" action="{{ url_for('panel.nuevo_candidato', eleccion_id=eleccion.id) }}" enctype="multipart/form-data">
+    <div class="field-row">
+      <div class="field">
+        <label for="numero_lista">Número de lista</label>
+        <input type="number" id="numero_lista" name="numero_lista" required min="1" max="99">
+      </div>
+      <div class="field">
+        <label for="sigla_partido">Sigla del partido</label>
+        <input type="text" id="sigla_partido" name="sigla_partido" required placeholder="ej. MAS, CC, APB">
+      </div>
+      <div class="field">
+        <label for="color_partido">Color del partido</label>
+        <input type="color" id="color_partido" name="color_partido" value="#2e7d32" style="height:42px;padding:.25rem">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="nombre_partido">Nombre completo del partido</label>
+      <input type="text" id="nombre_partido" name="nombre_partido" placeholder="ej. Movimiento Al Socialismo">
+    </div>
+
+    <h3 style="margin-top:1.25rem">Candidato a presidente</h3>
+    <div class="field-row">
+      <div class="field">
+        <label for="nombres">Nombres</label>
+        <input type="text" id="nombres" name="nombres" required>
+      </div>
+      <div class="field">
+        <label for="apellido_paterno">Apellido paterno</label>
+        <input type="text" id="apellido_paterno" name="apellido_paterno" required>
+      </div>
+      <div class="field">
+        <label for="apellido_materno">Apellido materno</label>
+        <input type="text" id="apellido_materno" name="apellido_materno">
+      </div>
+    </div>
+
+    <h3>Fórmula (vicepresidente)</h3>
+    <div class="field-row">
+      <div class="field">
+        <label for="formula_nombres">Nombres</label>
+        <input type="text" id="formula_nombres" name="formula_nombres">
+      </div>
+      <div class="field">
+        <label for="formula_apellido_paterno">Apellido paterno</label>
+        <input type="text" id="formula_apellido_paterno" name="formula_apellido_paterno">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="propuesta_breve">Propuesta breve (se muestra en la papeleta)</label>
+      <textarea id="propuesta_breve" name="propuesta_breve" rows="3" placeholder="Máximo 200 caracteres…" maxlength="200"></textarea>
+    </div>
+
+    <div class="gap-actions">
+      <button type="submit" class="btn btn-primary">Agregar candidato</button>
+      <a href="{{ url_for('panel.detalle_eleccion', eleccion_id=eleccion.id, tab='candidatos') }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

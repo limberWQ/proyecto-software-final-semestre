@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block title %}Elecciones · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Gestión electoral</div>
+    <h1>Elecciones</h1>
+  </div>
+  {% if usuario.rol_id == 1 %}
+  <a href="{{ url_for('panel.nueva_eleccion') }}" class="btn btn-primary">+ Nueva elección</a>
+  {% endif %}
+</div>
+
+<div class="card">
+  <form method="GET" class="flex" style="flex-wrap:wrap;gap:.6rem;margin-bottom:1rem">
+    <select name="departamento_id" style="width:auto">
+      <option value="">Todos los departamentos</option>
+      {% for d in departamentos %}
+      <option value="{{ d.id }}" {{ 'selected' if filtro_departamento == d.id else '' }}>{{ d.nombre }}</option>
+      {% endfor %}
+    </select>
+    <select name="estado" style="width:auto">
+      <option value="">Todos los estados</option>
+      <option value="CONFIGURACION" {{ 'selected' if filtro_estado == 'CONFIGURACION' }}>Configuración</option>
+      <option value="ACTIVA" {{ 'selected' if filtro_estado == 'ACTIVA' }}>Activa</option>
+      <option value="SUSPENDIDA" {{ 'selected' if filtro_estado == 'SUSPENDIDA' }}>Suspendida</option>
+      <option value="CERRADA" {{ 'selected' if filtro_estado == 'CERRADA' }}>Cerrada</option>
+    </select>
+    <button type="submit" class="btn">Filtrar</button>
+    <a href="{{ url_for('panel.elecciones') }}" class="btn btn-ghost">Limpiar</a>
+  </form>
+
+  {% if elecciones %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Título</th>
+          <th>Tipo</th>
+          <th>Departamento</th>
+          <th>Fecha inicio</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in elecciones %}
+        <tr>
+          <td><span class="mono">{{ e.codigo }}</span></td>
+          <td>{{ e.titulo }}</td>
+          <td class="muted" style="font-size:.85rem">{{ e.tipo }}</td>
+          <td>{{ e.departamento.nombre }}</td>
+          <td class="muted" style="font-size:.85rem">{{ e.fecha_inicio.strftime('%d/%m/%Y') }}</td>
+          <td>
+            {% if e.estado == 'ACTIVA' %}<span class="badge badge-verde">Activa</span>
+            {% elif e.estado == 'CONFIGURACION' %}<span class="badge badge-amarillo">Configuración</span>
+            {% elif e.estado == 'SUSPENDIDA' %}<span class="badge badge-rojo">Suspendida</span>
+            {% else %}<span class="badge badge-gris">Cerrada</span>{% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('panel.detalle_eleccion', eleccion_id=e.id) }}" class="btn btn-sm btn-ghost">Abrir →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    No hay elecciones que coincidan con los filtros aplicados.
+    {% if usuario.rol_id == 1 %}
+    <div class="mt-1"><a href="{{ url_for('panel.nueva_eleccion') }}" class="btn btn-primary btn-sm">Crear primera elección</a></div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

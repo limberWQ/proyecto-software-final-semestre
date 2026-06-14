@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Kiosco · Voto Cadena</title>
+  <link rel="stylesheet" href="/static/css/custom.css">
+  <style>
+    body { touch-action: manipulation; }
+    .ballot-shell { min-height: 100dvh; }
+  </style>
+</head>
+<body>
+
+<div class="ballot-shell" id="app">
+
+  {# ── Pantalla: Ingresar código de kiosco ─────────────── #}
+  <div id="pantalla-codigo" class="kiosk-locked">
+    <div class="tricolor" style="width:100%;position:fixed;top:0;left:0"><span class="r"></span><span class="a"></span><span class="v"></span></div>
+    <div class="icon">🗳️</div>
+    <h2 style="margin-top:.5rem">Kiosco de votación</h2>
+    <p class="muted" style="max-width:280px">Ingresa el código de vinculación que te proporcionó el operador de mesa.</p>
+    <div style="width:100%;max-width:280px">
+      <input type="text" id="input-codigo" class="mono" placeholder="ej. A1B2C3D4"
+             style="text-align:center;font-size:1.35rem;letter-spacing:.12em;text-transform:uppercase;padding:.75rem">
+      <button class="btn btn-primary btn-block mt-1" onclick="vincular()">Vincular kiosco</button>
+      <p id="error-codigo" class="muted" style="font-size:.85rem;text-align:center;color:var(--rojo);margin-top:.5rem"></p>
+    </div>
+  </div>
+
+  {# ── Pantalla: Kiosco no habilitado (esperando al operador) ── #}
+  <div id="pantalla-espera" class="kiosk-locked" hidden>
+    <div class="tricolor" style="width:100%;position:fixed;top:0;left:0"><span class="r"></span><span class="a"></span><span class="v"></span></div>
+    <div class="icon">🔒</div>
+    <h2>Kiosco no habilitado</h2>
+    <p class="muted" style="max-width:260px">
+      Espera a que el operador de mesa verifique tu identidad y habilite este kiosco para votar.
+    </p>
+    <p class="muted" style="font-size:.82rem">El kiosco se actualizará automáticamente.</p>
+  </div>
+
+  {# ── Pantalla: Papeleta ────────────────────────────────── #}
+  <div id="pantalla-papeleta" hidden>
+    <div class="ballot-header">
+      <div class="tricolor"><span class="r"></span><span class="a"></span><span class="v"></span></div>
+      <p class="muted" id="titulo-eleccion" style="font-size:.88rem;margin:.5rem 0 .25rem">Elección</p>
+      <div class="timer-pill" id="timer-pill">⏱ <span id="timer-display">5:00</span></div>
+      <p style="font-size:.82rem;color:var(--ink-soft);margin-top:.35rem">
+        Toca la imagen del candidato de tu preferencia para votar
+      </p>
+    </div>
+
+    <div class="ballot-grid" id="grid-candidatos"></div>
+
+    <div style="max-width:720px;margin:0 auto;padding:.5rem 1rem 2rem;display:flex;gap:.75rem;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" onclick="emitirEspecial('BLANCO')">Voto en blanco</button>
+      <button class="btn btn-ghost btn-sm" onclick="emitirEspecial('NULO')">Voto nulo</button>
+    </div>
+  </div>
+
+</div>
+
+{# ── Modal confirmación de voto ────────────────────────── #}
+<div id="modal-confirmar" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <div class="swatch-lg" id="modal-swatch">1</div>
+    <h2 id="modal-candidato">Candidato</h2>
+    <p id="modal-partido" class="muted"></p>
+    <p style="font-size:.9rem;color:var(--ink-soft)">¿Confirmas tu voto?<br>Esta acción no se puede deshacer.</p>
+    <div class="gap-actions" style="justify-content:center;margin-top:1rem">
+      <button id="btn-confirmar" class="btn btn-verde" onclick="confirmarVoto()">Sí, votar</button>
+      <button class="btn btn-ghost" onclick="cancelarVoto()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+{# ── Pantalla: Voto emitido ────────────────────────────── #}
+<div id="pantalla-exito" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <div style="font-size:3rem;margin-bottom:.5rem">✅</div>
+    <h2>¡Voto registrado!</h2>
+    <p class="muted">Tu voto fue registrado en la blockchain con el siguiente código de recibo:</p>
+    <div class="mono" id="codigo-recibo" style="font-size:1.1rem;font-weight:bold;word-break:break-all;margin:.75rem 0;padding:.75rem;background:var(--paper-2);border-radius:8px"></div>
+    <p class="muted" style="font-size:.82rem">Guarda este código. Con él puedes verificar que tu voto fue contabilizado en la cadena.</p>
+    <button class="btn btn-primary btn-block mt-1" onclick="volverEspera()">Listo</button>
+  </div>
+</div>
+
+<script>
+var KIOSCO_ID = null;
+var SESION_ID = null;
+var TIMER_IV  = null;
+var POLL_IV   = null;
+var VOTO_PENDIENTE = null;  // { candidato_id, tipo }
+
+// ── Vinculación ───────────────────────────────────────────
+
+function vincular() {
+  var codigo = document.getElementById('input-codigo').value.trim().toUpperCase();
+  var err = document.getElementById('error-codigo');
+  if (!codigo) { err.textContent = 'Ingresa el código de vinculación.'; return; }
+
+  // Buscar kiosco por código
+  fetch('/api/kioscos/por-codigo/' + encodeURIComponent(codigo))
+    .then(r => r.json())
+    .then(data => {
+      if (!data.kiosco_id) {
+        err.textContent = 'Código incorrecto. Verifica con el operador.';
+        return;
+      }
+      KIOSCO_ID = data.kiosco_id;
+      localStorage.setItem('kiosco_id', KIOSCO_ID);
+      mostrar('espera');
+      iniciarPolling();
+    })
+    .catch(() => { err.textContent = 'Error de conexión. Intenta nuevamente.'; });
+}
+
+// ── Polling del estado ────────────────────────────────────
+
+function iniciarPolling() {
+  if (POLL_IV) clearInterval(POLL_IV);
+  consultarEstado();
+  POLL_IV = setInterval(consultarEstado, 3000);
+}
+
+function consultarEstado() {
+  if (!KIOSCO_ID) return;
+  fetch('/operador/kiosco/' + KIOSCO_ID + '/estado-json')
+    .then(r => r.json())
+    .then(data => {
+      if (data.habilitado) {
+        SESION_ID = data.sesion_id;
+        mostrar('papeleta');
+        renderPapeleta(data);
+        iniciarTimer(data.segundos_restantes);
+        if (POLL_IV) { clearInterval(POLL_IV); POLL_IV = null; }
+      } else {
+        if (document.getElementById('pantalla-papeleta').hidden === false) {
+          // La sesión expiró mientras estaba en la papeleta
+          mostrar('espera');
+          detenerTimer();
+        }
+      }
+    })
+    .catch(() => {});  // silencioso — próximo poll lo reintentará
+}
+
+// ── Papeleta ──────────────────────────────────────────────
+
+function renderPapeleta(data) {
+  document.getElementById('titulo-eleccion').textContent = data.eleccion.titulo;
+  var grid = document.getElementById('grid-candidatos');
+  grid.innerHTML = '';
+
+  data.candidatos.forEach(c => {
+    var btn = document.createElement('button');
+    btn.className = 'candidate-btn';
+    btn.onclick = () => seleccionarCandidato(c);
+    btn.innerHTML =
+      '<div class="swatch" style="background:' + c.color_partido + '">' + c.numero_lista + '</div>' +
+      '<span class="sigla">' + c.sigla_partido + '</span>' +
+      '<span style="font-size:.88rem;font-weight:bold">' + c.nombre_completo + '</span>' +
+      (c.formula_completa ? '<span class="formula">Fórmula: ' + c.formula_completa + '</span>' : '') +
+      (c.nombre_partido ? '<span class="num">' + c.nombre_partido + '</span>' : '');
+    grid.appendChild(btn);
+  });
+}
+
+// ── Timer ─────────────────────────────────────────────────
+
+function iniciarTimer(segundos) {
+  if (TIMER_IV) clearInterval(TIMER_IV);
+  var secs = segundos;
+  actualizarTimer(secs);
+
+  TIMER_IV = setInterval(function() {
+    secs--;
+    actualizarTimer(secs);
+    if (secs <= 0) {
+      clearInterval(TIMER_IV);
+      mostrar('espera');
+      iniciarPolling();
+    }
+  }, 1000);
+}
+
+function actualizarTimer(secs) {
+  if (secs < 0) secs = 0;
+  var m = Math.floor(secs / 60);
+  var s = secs % 60;
+  document.getElementById('timer-display').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+  var pill = document.getElementById('timer-pill');
+  if (secs <= 60) {
+    pill.style.background = 'var(--rojo-bg)';
+    pill.style.borderColor = '#f6d3cf';
+    pill.style.color = 'var(--rojo)';
+  }
+}
+
+function detenerTimer() {
+  if (TIMER_IV) { clearInterval(TIMER_IV); TIMER_IV = null; }
+}
+
+// ── Selección y confirmación ──────────────────────────────
+
+function seleccionarCandidato(c) {
+  VOTO_PENDIENTE = { candidato_id: c.id, tipo: 'VALIDO' };
+  var color = c.color_partido || '#2b2b2b';
+  document.getElementById('modal-swatch').style.background = color;
+  document.getElementById('modal-swatch').textContent = c.numero_lista;
+  document.getElementById('modal-candidato').textContent = c.nombre_completo;
+  document.getElementById('modal-partido').textContent = c.sigla_partido + (c.nombre_partido ? ' · ' + c.nombre_partido : '');
+  document.getElementById('modal-confirmar').removeAttribute('hidden');
+}
+
+function emitirEspecial(tipo) {
+  VOTO_PENDIENTE = { candidato_id: null, tipo: tipo };
+  document.getElementById('modal-swatch').style.background = tipo === 'BLANCO' ? '#e0ddd5' : '#2b2b2b';
+  document.getElementById('modal-swatch').style.color = '#2b2b2b';
+  document.getElementById('modal-swatch').textContent = tipo === 'BLANCO' ? '⬜' : '✕';
+  document.getElementById('modal-candidato').textContent = tipo === 'BLANCO' ? 'Voto en blanco' : 'Voto nulo';
+  document.getElementById('modal-partido').textContent = '';
+  document.getElementById('modal-confirmar').removeAttribute('hidden');
+}
+
+function cancelarVoto() {
+  VOTO_PENDIENTE = null;
+  document.getElementById('modal-confirmar').setAttribute('hidden', '');
+}
+
+function confirmarVoto() {
+  if (!VOTO_PENDIENTE || !SESION_ID) return;
+  document.getElementById('btn-confirmar').disabled = true;
+  document.getElementById('btn-confirmar').textContent = 'Registrando…';
+
+  fetch('/api/votos/emitir', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      sesion_id: SESION_ID,
+      candidato_id: VOTO_PENDIENTE.candidato_id,
+      tipo: VOTO_PENDIENTE.tipo
+    })
+  })
+  .then(r => r.json())
+  .then(data => {
+    document.getElementById('modal-confirmar').setAttribute('hidden', '');
+    if (data.recibo || data.codigo_recibo) {
+      document.getElementById('codigo-recibo').textContent = data.recibo || data.codigo_recibo;
+      document.getElementById('pantalla-exito').removeAttribute('hidden');
+      detenerTimer();
+    } else {
+      alert('Error al registrar el voto: ' + (data.error || 'intenta nuevamente'));
+      document.getElementById('btn-confirmar').disabled = false;
+      document.getElementById('btn-confirmar').textContent = 'Sí, votar';
+    }
+  })
+  .catch(() => {
+    alert('Error de conexión. Intenta nuevamente.');
+    document.getElementById('btn-confirmar').disabled = false;
+    document.getElementById('btn-confirmar').textContent = 'Sí, votar';
+  });
+}
+
+// ── Post-voto ─────────────────────────────────────────────
+
+function volverEspera() {
+  SESION_ID = null;
+  VOTO_PENDIENTE = null;
+  document.getElementById('btn-confirmar').disabled = false;
+  document.getElementById('btn-confirmar').textContent = 'Sí, votar';
+  document.getElementById('pantalla-exito').setAttribute('hidden', '');
+  mostrar('espera');
+  iniciarPolling();
+}
+
+// ── Utilidades ────────────────────────────────────────────
+
+function mostrar(pantalla) {
+  ['codigo', 'espera', 'papeleta'].forEach(p => {
+    var el = document.getElementById('pantalla-' + p);
+    if (el) el.hidden = (p !== pantalla);
+  });
+}
+
+// ── Inicio: restaurar kiosco vinculado si ya existe ───────
+
+window.addEventListener('DOMContentLoaded', function() {
+  var guardado = localStorage.getItem('kiosco_id');
+  if (guardado) {
+    KIOSCO_ID = guardado;
+    mostrar('espera');
+    iniciarPolling();
+  } else {
+    mostrar('codigo');
+  }
+});
+</script>
+</body>
+</html>

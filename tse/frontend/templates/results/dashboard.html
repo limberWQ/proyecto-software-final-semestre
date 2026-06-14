@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Resultados · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Transparencia</div>
+    <h1>Resultados electorales</h1>
+  </div>
+</div>
+
+{% if elecciones %}
+<div class="card-row">
+  {% for e in elecciones %}
+  <div class="card">
+    <div class="flex-between" style="margin-bottom:.5rem">
+      <span class="mono muted" style="font-size:.8rem">{{ e.codigo }}</span>
+      {% if e.estado == 'ACTIVA' %}<span class="badge badge-verde">En curso</span>
+      {% elif e.estado == 'CERRADA' %}<span class="badge badge-gris">Finalizada</span>
+      {% elif e.estado == 'CONFIGURACION' %}<span class="badge badge-amarillo">Configuración</span>
+      {% else %}<span class="badge badge-rojo">Suspendida</span>{% endif %}
+    </div>
+    <div style="font-weight:bold;margin-bottom:.25rem">{{ e.titulo }}</div>
+    <div class="muted" style="font-size:.85rem">{{ e.departamento.nombre }} · {{ e.tipo }}</div>
+    <div class="muted" style="font-size:.82rem;margin-top:.25rem">{{ e.fecha_inicio.strftime('%d/%m/%Y') }}</div>
+    <a href="{{ url_for('panel.resultados_eleccion', eleccion_id=e.id) }}"
+       class="btn btn-ghost btn-sm mt-1">
+      {% if e.estado == 'ACTIVA' %}Ver participación en tiempo real →
+      {% elif e.estado == 'CERRADA' %}Ver resultados finales →
+      {% else %}Ver detalle →{% endif %}
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">No hay elecciones registradas todavía.</div>
+{% endif %}
+
+{% endblock %}

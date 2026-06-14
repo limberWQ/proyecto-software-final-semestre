@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Inicio · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Panel de auditoría</div>
+    <h1>Hola, {{ usuario.nombre_completo }}</h1>
+  </div>
+</div>
+
+<div class="card-row mb-0">
+  <div class="stat">
+    <div class="num">{{ total_elecciones }}</div>
+    <div class="label">Elecciones registradas</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ resumen_estados.ACTIVA }}</div>
+    <div class="label">Activas ahora</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ resumen_estados.CERRADA }}</div>
+    <div class="label">Cerradas</div>
+  </div>
+</div>
+
+<div class="card mt-1">
+  <div class="flex-between">
+    <h2>Elecciones</h2>
+    <a href="{{ url_for('panel.elecciones') }}" class="btn btn-ghost btn-sm">Ver todas</a>
+  </div>
+
+  {% if elecciones %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Título</th>
+          <th>Departamento</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in elecciones %}
+        <tr>
+          <td class="mono">{{ e.codigo }}</td>
+          <td>{{ e.titulo }}</td>
+          <td>{{ e.departamento.nombre }}</td>
+          <td>
+            {% if e.estado == 'ACTIVA' %}<span class="badge badge-verde">Activa</span>
+            {% elif e.estado == 'CONFIGURACION' %}<span class="badge badge-amarillo">Configuración</span>
+            {% elif e.estado == 'SUSPENDIDA' %}<span class="badge badge-rojo">Suspendida</span>
+            {% else %}<span class="badge badge-gris">Cerrada</span>{% endif %}
+          </td>
+          <td><a href="{{ url_for('panel.detalle_eleccion', eleccion_id=e.id) }}" class="btn btn-sm btn-ghost">Auditar</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No hay elecciones registradas todavía.</div>
+  {% endif %}
+</div>
+{% endblock %}

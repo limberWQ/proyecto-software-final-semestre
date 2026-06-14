@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% block title %}{{ eleccion.titulo }} · Resultados{% endblock %}
+
+{% block extra_head %}
+{% if eleccion.estado == 'ACTIVA' %}
+<script>
+/* Polling de participación cada 8 segundos mientras la elección está activa */
+window.addEventListener('DOMContentLoaded', function () {
+  setInterval(function () {
+    fetch('/api/resultados/{{ eleccion.id }}/participacion')
+      .then(r => r.json())
+      .then(function (d) {
+        var el = document.getElementById('part-votos');
+        if (el) el.textContent = d.total_votos;
+        var pp = document.getElementById('part-pct');
+        if (pp) pp.textContent = d.participacion + '%';
+        var bar = document.getElementById('part-bar');
+        if (bar) bar.style.width = d.participacion + '%';
+      })
+      .catch(function () {});
+  }, 8000);
+});
+</script>
+{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('panel.resultados_general') }}">Resultados</a> › {{ eleccion.departamento.nombre }}</div>
+    <h1>{{ eleccion.titulo }}</h1>
+    <div class="flex" style="gap:.6rem;margin-top:.3rem">
+      {% if eleccion.estado == 'ACTIVA' %}<span class="badge badge-verde">En curso</span>
+      {% elif eleccion.estado == 'CERRADA' %}<span class="badge badge-gris">Finalizada</span>
+      {% elif eleccion.estado == 'SUSPENDIDA' %}<span class="badge badge-rojo">Suspendida</span>
+      {% else %}<span class="badge badge-amarillo">Configuración</span>{% endif %}
+      {% if cadena_valida %}<span class="badge badge-verde">Blockchain íntegra ✓</span>
+      {% else %}<span class="badge badge-rojo">⚠ Blockchain comprometida</span>{% endif %}
+    </div>
+  </div>
+
+  {% if usuario.rol_id == 1 and eleccion.estado in ['ACTIVA', 'SUSPENDIDA'] %}
+  <form method="POST" action="{{ url_for('panel.cerrar_y_contar', eleccion_id=eleccion.id) }}"
+        onsubmit="return confirm('¿Cerrar la elección y realizar el conteo final? Esta acción es irreversible.')">
+    <button type="submit" class="btn btn-rojo">Cerrar y contar votos</button>
+  </form>
+  {% endif %}
+</div>
+
+{# ── Participación ────────────────────────────────────── #}
+<div class="card-row" style="margin-bottom:1rem">
+  <div class="stat">
+    <div class="num">{{ total_padron }}</div>
+    <div class="label">Total en el padrón</div>
+  </div>
+  <div class="stat">
+    <div class="num" style="color:var(--verde)" id="part-votos">{{ total_votos }}</div>
+    <div class="label">Votos emitidos</div>
+  </div>
+  <div class="stat">
+    <div class="num" id="part-pct">{{ participacion }}%</div>
+    <div class="label">Participación</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ total_bloques }}</div>
+    <div class="label">Bloques en la cadena</div>
+  </div>
+</div>
+
+{# Barra de participación #}
+<div class="card" style="padding:.85rem 1.25rem">
+  <div class="flex-between" style="margin-bottom:.4rem">
+    <span class="muted" style="font-size:.85rem">Participación</span>
+    <span style="font-weight:bold;font-size:.9rem" id="part-pct-2">{{ participacion }}%</span>
+  </div>
+  <div style="background:var(--paper-2);border-radius:999px;height:10px;overflow:hidden">
+    <div id="part-bar" style="background:var(--verde);height:100%;border-radius:999px;transition:width .5s ease;width:{{ participacion }}%"></div>
+  </div>
+  {% if eleccion.estado == 'ACTIVA' %}
+  <div class="muted" style="font-size:.78rem;margin-top:.4rem">Actualizando automáticamente cada 8 segundos…</div>
+  {% endif %}
+</div>
+
+{# ── Resultados finales (solo si está CERRADA) ─────────── #}
+{% if eleccion.estado == 'CERRADA' %}
+<div class="card mt-1">
+  <h2>Resultados finales</h2>
+  <p class="muted" style="font-size:.85rem;margin-bottom:1rem">
+    Los votos fueron descifrados con la clave privada RSA de la elección al momento del cierre.
+  </p>
+
+  {% if conteos %}
+    {% set total_contados = (conteos.candidatos | sum(attribute='votos')) + (conteos.blancos or 0) + (conteos.nulos or 0) %}
+    {% for c in conteos.candidatos %}
+    <div style="margin-bottom:1.1rem">
+      <div class="flex-between" style="margin-bottom:.3rem">
+        <div>
+          <span style="font-weight:bold">{{ c.numero_lista }}. {{ c.sigla_partido }}</span>
+          <span class="muted" style="font-size:.88rem"> — {{ c.nombre_completo }}</span>
+        </div>
+        <div style="text-align:right">
+          <span style="font-weight:bold">{{ c.votos }}</span>
+          <span class="muted" style="font-size:.85rem">({{ c.porcentaje }}%)</span>
+        </div>
+      </div>
+      <div style="background:var(--paper-2);border-radius:999px;height:8px;overflow:hidden">
+        <div style="background:{{ c.color_partido or 'var(--ink-soft)' }};height:100%;border-radius:999px;width:{{ c.porcentaje }}%"></div>
+      </div>
+    </div>
+    {% endfor %}
+
+    {% if conteos.blancos is not none %}
+    <div style="margin-bottom:.75rem">
+      <div class="flex-between" style="margin-bottom:.25rem">
+        <span class="muted">Votos en blanco</span>
+        <span class="muted" style="font-weight:bold">{{ conteos.blancos }}</span>
+      </div>
+      <div style="background:var(--paper-2);border-radius:999px;height:6px">
+        {% set pct_b = ((conteos.blancos / total_contados * 100) | round(1)) if total_contados else 0 %}
+        <div style="background:var(--ink-soft);height:100%;border-radius:999px;width:{{ pct_b }}%"></div>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if conteos.nulos is not none %}
+    <div style="margin-bottom:.75rem">
+      <div class="flex-between" style="margin-bottom:.25rem">
+        <span class="muted">Votos nulos</span>
+        <span class="muted" style="font-weight:bold">{{ conteos.nulos }}</span>
+      </div>
+      <div style="background:var(--paper-2);border-radius:999px;height:6px">
+        {% set pct_n = ((conteos.nulos / total_contados * 100) | round(1)) if total_contados else 0 %}
+        <div style="background:var(--rojo);height:100%;border-radius:999px;width:{{ pct_n }}%"></div>
+      </div>
+    </div>
+    {% endif %}
+  {% else %}
+  <div class="empty">No hay datos de conteo disponibles.</div>
+  {% endif %}
+</div>
+
+{% elif eleccion.estado == 'ACTIVA' %}
+<div class="card mt-1">
+  <div class="empty" style="padding:1.25rem">
+    <div style="font-size:1.5rem;margin-bottom:.4rem">🔐</div>
+    Los votos están cifrados con RSA mientras la elección está en curso.<br>
+    <span class="muted" style="font-size:.85rem">El desglose por candidato se calculará al cerrar la elección.</span>
+  </div>
+</div>
+{% endif %}
+
+{# ── Info blockchain ───────────────────────────────────── #}
+<div class="card mt-1">
+  <div class="flex-between">
+    <h3 style="margin:0">Integridad blockchain</h3>
+    <a href="{{ url_for('panel.auditoria_eleccion', eleccion_id=eleccion.id) }}" class="btn btn-ghost btn-sm">Auditar cadena →</a>
+  </div>
+  <table style="margin-top:.75rem;width:auto">
+    <tr><th style="padding-right:1.5rem;color:var(--ink-soft)">Bloques</th><td>{{ total_bloques }}</td></tr>
+    <tr><th>Estado de la cadena</th>
+      <td>{% if cadena_valida %}<span class="badge badge-verde">Íntegra</span>
+          {% else %}<span class="badge badge-rojo">Comprometida</span>{% endif %}</td>
+    </tr>
+  </table>
+</div>
+
+{% endblock %}

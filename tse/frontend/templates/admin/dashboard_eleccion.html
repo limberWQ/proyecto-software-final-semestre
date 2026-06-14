@@ -1,0 +1,231 @@
+{% extends "base.html" %}
+{% block title %}{{ eleccion.titulo }} · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('panel.elecciones') }}">Elecciones</a> › {{ eleccion.departamento.nombre }}</div>
+    <h1>{{ eleccion.titulo }}</h1>
+    <div class="flex" style="gap:.6rem;margin-top:.35rem">
+      <span class="mono muted" style="font-size:.85rem">{{ eleccion.codigo }}</span>
+      {% if eleccion.estado == 'ACTIVA' %}<span class="badge badge-verde">Activa</span>
+      {% elif eleccion.estado == 'CONFIGURACION' %}<span class="badge badge-amarillo">Configuración</span>
+      {% elif eleccion.estado == 'SUSPENDIDA' %}<span class="badge badge-rojo">Suspendida</span>
+      {% else %}<span class="badge badge-gris">Cerrada</span>{% endif %}
+    </div>
+  </div>
+
+  {% if usuario.rol_id == 1 %}
+  <div class="gap-actions">
+    {% if eleccion.estado == 'CONFIGURACION' %}
+    <form method="POST" action="{{ url_for('panel.cambiar_estado_eleccion', eleccion_id=eleccion.id) }}">
+      <input type="hidden" name="estado" value="ACTIVA">
+      <button type="submit" class="btn btn-verde"
+        onclick="return confirm('¿Habilitar la elección? Una vez activa, no podrás editar sus datos generales.')">
+        ▶ Habilitar elección
+      </button>
+    </form>
+    {% elif eleccion.estado == 'ACTIVA' %}
+    <form method="POST" action="{{ url_for('panel.cambiar_estado_eleccion', eleccion_id=eleccion.id) }}">
+      <input type="hidden" name="estado" value="SUSPENDIDA">
+      <button type="submit" class="btn btn-amarillo"
+        onclick="return confirm('¿Suspender la elección?')">⏸ Suspender</button>
+    </form>
+    {% elif eleccion.estado == 'SUSPENDIDA' %}
+    <form method="POST" action="{{ url_for('panel.cambiar_estado_eleccion', eleccion_id=eleccion.id) }}">
+      <input type="hidden" name="estado" value="ACTIVA">
+      <button type="submit" class="btn btn-verde">▶ Reanudar</button>
+    </form>
+    {% endif %}
+
+    {% if eleccion.estado in ['ACTIVA', 'SUSPENDIDA'] %}
+    <form method="POST" action="{{ url_for('panel.cerrar_y_contar', eleccion_id=eleccion.id) }}">
+      <button type="submit" class="btn btn-rojo"
+        onclick="return confirm('¿Cerrar la elección y realizar el conteo final? Esta acción es irreversible.')">
+        Cerrar y contar
+      </button>
+    </form>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{# ── Tabs ─────────────────────────────────────────────────── #}
+<div class="flex" style="gap:0;border-bottom:1px solid var(--line);margin-bottom:1.25rem">
+  {% set tabs = [
+    ('general', 'General'),
+    ('candidatos', 'Candidatos (' ~ candidatos|length ~ ')'),
+    ('recintos', 'Recintos'),
+    ('padron', 'Padrón'),
+  ] %}
+  {% set tab_activo = request.args.get('tab', 'general') %}
+  {% for t_id, t_label in tabs %}
+  <a href="?tab={{ t_id }}"
+     style="padding:.55rem 1rem;font-size:.92rem;border-bottom:2px solid {{ 'var(--ink)' if tab_activo == t_id else 'transparent' }};color:{{ 'var(--ink)' if tab_activo == t_id else 'var(--ink-soft)' }};font-weight:{{ 'bold' if tab_activo == t_id else 'normal' }};text-decoration:none">
+    {{ t_label }}
+  </a>
+  {% endfor %}
+</div>
+
+{# ── Tab: General ─────────────────────────────────────────── #}
+{% if tab_activo == 'general' %}
+<div class="card" style="max-width:640px">
+  {% if editable and usuario.rol_id == 1 %}
+  <h3>Datos de la elección</h3>
+  <form method="POST" action="{{ url_for('panel.editar_eleccion', eleccion_id=eleccion.id) }}">
+    <div class="field">
+      <label>Título</label>
+      <input type="text" name="titulo" value="{{ eleccion.titulo }}">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Fecha inicio</label>
+        <input type="datetime-local" name="fecha_inicio" value="{{ eleccion.fecha_inicio.strftime('%Y-%m-%dT%H:%M') }}">
+      </div>
+      <div class="field">
+        <label>Fecha fin</label>
+        <input type="datetime-local" name="fecha_fin" value="{{ eleccion.fecha_fin.strftime('%Y-%m-%dT%H:%M') if eleccion.fecha_fin else '' }}">
+      </div>
+    </div>
+    <div class="field">
+      <label>Descripción</label>
+      <textarea name="descripcion" rows="3">{{ eleccion.descripcion or '' }}</textarea>
+    </div>
+    <button type="submit" class="btn btn-primary">Guardar cambios</button>
+  </form>
+  {% else %}
+  <table style="width:auto">
+    <tr><th style="padding-right:1.5rem">Departamento</th><td>{{ eleccion.departamento.nombre }}</td></tr>
+    <tr><th>Tipo</th><td>{{ eleccion.tipo }}</td></tr>
+    <tr><th>Fecha inicio</th><td>{{ eleccion.fecha_inicio.strftime('%d/%m/%Y %H:%M') }}</td></tr>
+    <tr><th>Fecha fin</th><td>{{ eleccion.fecha_fin.strftime('%d/%m/%Y %H:%M') if eleccion.fecha_fin else '—' }}</td></tr>
+    <tr><th>Descripción</th><td>{{ eleccion.descripcion or '—' }}</td></tr>
+  </table>
+  {% if not editable and usuario.rol_id == 1 %}
+  <p class="muted mt-1" style="font-size:.85rem">La elección está en curso o cerrada — no se pueden editar los datos generales.</p>
+  {% endif %}
+  {% endif %}
+</div>
+
+{# ── Tab: Candidatos ───────────────────────────────────────── #}
+{% elif tab_activo == 'candidatos' %}
+{% if editable and usuario.rol_id == 1 %}
+<div class="flex-between" style="margin-bottom:1rem">
+  <p class="muted mb-0">Candidatos registrados para esta elección.</p>
+  <a href="{{ url_for('panel.nuevo_candidato', eleccion_id=eleccion.id) }}" class="btn btn-primary btn-sm">+ Agregar candidato</a>
+</div>
+{% endif %}
+
+{% if candidatos %}
+<div class="card-row">
+  {% for c in candidatos %}
+  <div class="card" style="padding:1rem">
+    <div class="flex-between" style="margin-bottom:.5rem">
+      <span style="font-size:1.5rem;font-weight:bold;color:{{ c.color_partido or 'var(--ink)' }}">{{ c.numero_lista }}</span>
+      <span class="badge badge-gris">{{ c.sigla_partido }}</span>
+    </div>
+    <div style="font-weight:bold">{{ c.nombre_completo }}</div>
+    {% if c.formula_completa %}
+    <div class="muted" style="font-size:.85rem">Fórmula: {{ c.formula_completa }}</div>
+    {% endif %}
+    {% if c.nombre_partido %}
+    <div class="muted" style="font-size:.82rem">{{ c.nombre_partido }}</div>
+    {% endif %}
+    {% if not c.activo %}<span class="badge badge-gris" style="margin-top:.5rem">Inactivo</span>{% endif %}
+
+    {% if editable and usuario.rol_id == 1 %}
+    <div class="gap-actions mt-1">
+      <a href="{{ url_for('panel.editar_candidato', eleccion_id=eleccion.id, candidato_id=c.id) }}" class="btn btn-sm btn-ghost">Editar</a>
+      <form method="POST" action="{{ url_for('panel.eliminar_candidato', eleccion_id=eleccion.id, candidato_id=c.id) }}"
+            onsubmit="return confirm('¿Eliminar este candidato?')">
+        <button type="submit" class="btn btn-sm btn-rojo">Eliminar</button>
+      </form>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  No hay candidatos registrados.
+  {% if editable and usuario.rol_id == 1 %}
+  <div class="mt-1"><a href="{{ url_for('panel.nuevo_candidato', eleccion_id=eleccion.id) }}" class="btn btn-sm btn-primary">Agregar primer candidato</a></div>
+  {% endif %}
+</div>
+{% endif %}
+
+{# ── Tab: Recintos ─────────────────────────────────────────── #}
+{% elif tab_activo == 'recintos' %}
+{% if editable and usuario.rol_id == 1 %}
+<div class="card" style="max-width:480px;margin-bottom:1rem">
+  <h3>Asignar recintos a esta elección</h3>
+  <form method="POST" action="{{ url_for('panel.editar_eleccion', eleccion_id=eleccion.id) }}">
+    <div class="field">
+      <label>Recintos disponibles ({{ eleccion.departamento.nombre }})</label>
+      {% for r in recintos_departamento %}
+      <label style="display:flex;gap:.5rem;align-items:center;font-size:.92rem;color:var(--ink);margin-bottom:.25rem">
+        <input type="checkbox" name="recinto_ids" value="{{ r.id }}"
+               {{ 'checked' if r in recintos_asignados else '' }}>
+        {{ r.nombre }} <span class="muted" style="font-size:.8rem">({{ r.codigo }})</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Guardar asignación</button>
+  </form>
+</div>
+{% endif %}
+
+<div class="card">
+  <h3>Recintos asignados</h3>
+  {% if recintos_asignados %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Código</th><th>Recinto</th><th>Municipio</th><th>Mesas</th></tr></thead>
+      <tbody>
+        {% for r in recintos_asignados %}
+        <tr>
+          <td class="mono">{{ r.codigo }}</td>
+          <td>{{ r.nombre }}</td>
+          <td class="muted">{{ r.municipio }}</td>
+          <td>{{ r.total_mesas }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No hay recintos asignados a esta elección todavía.</div>
+  {% endif %}
+</div>
+
+{# ── Tab: Padrón ───────────────────────────────────────────── #}
+{% elif tab_activo == 'padron' %}
+{% if usuario.rol_id == 1 %}
+<div class="gap-actions" style="margin-bottom:1rem">
+  <form method="POST" action="{{ url_for('panel.construir_padron', eleccion_id=eleccion.id) }}"
+        onsubmit="return confirm('¿Consultar SEGIP y agregar los ciudadanos habilitados al padrón?')">
+    <button type="submit" class="btn btn-primary">Consultar y agregar ciudadanos habilitados</button>
+  </form>
+  <form method="POST" action="{{ url_for('panel.actualizar_padron', eleccion_id=eleccion.id) }}"
+        onsubmit="return confirm('¿Sincronizar el padrón con SEGIP? Se inhabilitarán ciudadanos fallecidos.')">
+    <button type="submit" class="btn">Actualizar padrón desde SEGIP</button>
+  </form>
+  <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id) }}" class="btn btn-ghost">Ver padrón completo →</a>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="flex-between">
+    <h3>Padrón electoral</h3>
+    <span class="badge badge-gris">{{ total_padron }} inscritos</span>
+  </div>
+  {% if total_padron == 0 %}
+  <div class="empty">El padrón está vacío. Usa el botón de arriba para cargarlo desde SEGIP.</div>
+  {% else %}
+  <p class="muted">{{ total_padron }} ciudadanos habilitados para votar en esta elección.</p>
+  <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id) }}" class="btn btn-ghost btn-sm">Ver padrón completo →</a>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

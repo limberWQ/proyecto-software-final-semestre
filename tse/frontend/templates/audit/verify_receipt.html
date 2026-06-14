@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Verificar recibo · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('panel.auditoria') }}">Auditoría</a></div>
+    <h1>Verificar recibo de voto</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width:520px">
+  <p class="muted">Ingresa el código de recibo que recibiste al votar para verificar que tu voto está registrado en la blockchain.</p>
+  <form method="POST" action="{{ url_for('panel.verificar_recibo') }}">
+    <div class="field">
+      <label for="eleccion_id">Elección</label>
+      <select id="eleccion_id" name="eleccion_id" required>
+        <option value="">— selecciona la elección —</option>
+        {% for e in elecciones %}
+        <option value="{{ e.id }}" {{ 'selected' if resultado and resultado.eleccion_id == e.id else '' }}>
+          {{ e.titulo }} ({{ e.departamento.nombre }})
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="codigo_recibo">Código de recibo</label>
+      <input type="text" id="codigo_recibo" name="codigo_recibo" required
+             class="mono" placeholder="ej. a1b2c3d4e5f6..."
+             value="{{ resultado.codigo if resultado else '' }}">
+    </div>
+    <button type="submit" class="btn btn-primary">Verificar en la blockchain</button>
+  </form>
+</div>
+
+{% if resultado %}
+<div class="card mt-1" style="max-width:520px">
+  {% if resultado.encontrado %}
+  <div style="text-align:center;padding:.5rem 0 1rem">
+    <div style="font-size:2.5rem">✅</div>
+    <h2 style="color:var(--verde)">Voto verificado</h2>
+    <p class="muted">Tu código de recibo fue encontrado en la blockchain. El voto fue registrado correctamente.</p>
+  </div>
+  <table>
+    <tr><th style="padding-right:1.5rem;color:var(--ink-soft)">Recibo</th>
+        <td class="mono" style="font-size:.88rem;word-break:break-all">{{ resultado.codigo }}</td></tr>
+    <tr><th>Bloque #</th><td>{{ resultado.bloque.index }}</td></tr>
+    <tr><th>Hash del bloque</th>
+        <td class="mono muted" style="font-size:.78rem">{{ resultado.bloque.hash[:32] }}…</td></tr>
+    <tr><th>Timestamp</th>
+        <td class="muted" style="font-size:.88rem">{{ resultado.bloque.timestamp[:19] }}</td></tr>
+  </table>
+  {% else %}
+  <div style="text-align:center;padding:.5rem 0 1rem">
+    <div style="font-size:2.5rem">❌</div>
+    <h2 style="color:var(--rojo)">No encontrado</h2>
+    <p class="muted">El código <span class="mono">{{ resultado.codigo }}</span> no fue encontrado en la cadena de bloques de la elección seleccionada.</p>
+    <p class="muted" style="font-size:.85rem">Verifica que el código y la elección sean correctos.</p>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

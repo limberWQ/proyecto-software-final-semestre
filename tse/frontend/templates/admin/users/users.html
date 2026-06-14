@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Usuarios · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Administración</div>
+    <h1>Usuarios del sistema</h1>
+  </div>
+  <a href="{{ url_for('panel.nuevo_usuario') }}" class="btn btn-primary">+ Nuevo usuario</a>
+</div>
+
+<div class="flex" style="gap:.5rem;margin-bottom:1rem">
+  <a href="{{ url_for('panel.usuarios') }}" class="btn btn-sm {{ 'btn-primary' if not rol_filtro else 'btn-ghost' }}">Todos</a>
+  {% for r in roles %}
+  <a href="{{ url_for('panel.usuarios', rol_id=r.id) }}" class="btn btn-sm {{ 'btn-primary' if rol_filtro == r.id else 'btn-ghost' }}">
+    {{ r.nombre }}
+  </a>
+  {% endfor %}
+</div>
+
+<div class="card">
+  {% if usuarios %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>CI</th>
+          <th>Nombre completo</th>
+          <th>Email</th>
+          <th>Rol</th>
+          <th>Recinto asignado</th>
+          <th>Estado</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for u in usuarios %}
+        <tr>
+          <td class="mono">{{ u.ci }}</td>
+          <td>{{ u.nombre_completo }}</td>
+          <td class="muted" style="font-size:.88rem">{{ u.email }}</td>
+          <td>
+            {% if u.rol_id == 1 %}<span class="badge badge-rojo">ADMIN</span>
+            {% elif u.rol_id == 2 %}<span class="badge badge-amarillo">OPERADOR</span>
+            {% else %}<span class="badge badge-gris">AUDITOR</span>{% endif %}
+          </td>
+          <td class="muted" style="font-size:.88rem">{{ u.recinto.nombre if u.recinto else '—' }}</td>
+          <td>
+            {% if u.activo %}<span class="badge badge-verde">Activo</span>
+            {% else %}<span class="badge badge-gris">Inactivo</span>{% endif %}
+          </td>
+          <td>
+            <div class="gap-actions">
+              <a href="{{ url_for('panel.editar_usuario', uid=u.id) }}" class="btn btn-sm btn-ghost">Editar</a>
+              <a href="{{ url_for('panel.cambiar_password', uid=u.id) }}" class="btn btn-sm btn-ghost">Contraseña</a>
+              {% if u.activo and u.id != usuario.id %}
+              <button class="btn btn-sm btn-rojo" onclick="confirmarEliminar({{ u.id }}, '{{ u.nombre_completo }}')">Desactivar</button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No hay usuarios registrados con ese filtro.</div>
+  {% endif %}
+</div>
+
+{# Modal justificación para eliminar #}
+<div id="modal-eliminar" class="modal-overlay" hidden>
+  <div class="modal-box">
+    <h3 id="modal-titulo">Desactivar usuario</h3>
+    <p class="muted">Ingresa la justificación para esta acción. Quedará registrada en el audit log.</p>
+    <form id="form-eliminar" method="POST">
+      <div class="field">
+        <textarea name="justificacion" rows="3" placeholder="Motivo de la desactivación (mínimo 10 caracteres)…" required minlength="10" style="width:100%"></textarea>
+      </div>
+      <div class="gap-actions" style="justify-content:center">
+        <button type="submit" class="btn btn-rojo">Confirmar desactivación</button>
+        <button type="button" class="btn btn-ghost" onclick="cerrarModal()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function confirmarEliminar(uid, nombre) {
+  document.getElementById('modal-titulo').textContent = 'Desactivar: ' + nombre;
+  document.getElementById('form-eliminar').action = '/panel/usuarios/' + uid + '/eliminar';
+  document.getElementById('modal-eliminar').removeAttribute('hidden');
+}
+function cerrarModal() {
+  document.getElementById('modal-eliminar').setAttribute('hidden', '');
+}
+</script>
+{% endblock %}

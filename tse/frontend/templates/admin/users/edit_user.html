@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}Editar usuario · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('panel.usuarios') }}">Usuarios</a></div>
+    <h1>Editar usuario</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width:560px">
+  <form method="POST" action="{{ url_for('panel.editar_usuario', uid=u.id) }}">
+    <div class="field">
+      <label>CI (no editable)</label>
+      <input type="text" value="{{ u.ci }}" disabled class="mono muted">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="nombres">Nombres</label>
+        <input type="text" id="nombres" name="nombres" required value="{{ u.nombres }}">
+      </div>
+      <div class="field">
+        <label for="apellidos">Apellidos</label>
+        <input type="text" id="apellidos" name="apellidos" required value="{{ u.apellidos }}">
+      </div>
+    </div>
+    <div class="field">
+      <label for="email">Correo electrónico</label>
+      <input type="email" id="email" name="email" required value="{{ u.email }}">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="rol_id">Rol</label>
+        <select id="rol_id" name="rol_id" onchange="toggleRecinto(this.value)">
+          {% for r in roles %}
+          <option value="{{ r.id }}" {{ 'selected' if r.id == u.rol_id }}>{{ r.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field" id="campo-recinto" style="{{ '' if u.rol_id == 2 else 'display:none' }}">
+        <label for="recinto_id">Recinto asignado</label>
+        <select id="recinto_id" name="recinto_id">
+          <option value="">— ninguno —</option>
+          {% for r in recintos %}
+          <option value="{{ r.id }}" {{ 'selected' if u.recinto_id == r.id }}>{{ r.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+    <div class="gap-actions">
+      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+      <a href="{{ url_for('panel.usuarios') }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function toggleRecinto(rolId) {
+  document.getElementById('campo-recinto').style.display = rolId == '2' ? '' : 'none';
+}
+</script>
+{% endblock %}

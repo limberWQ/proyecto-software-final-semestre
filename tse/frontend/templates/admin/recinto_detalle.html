@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}{{ recinto.nombre }} · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('panel.recintos') }}">Recintos</a></div>
+    <h1>{{ recinto.nombre }}</h1>
+    <div class="muted" style="font-size:.9rem">{{ recinto.codigo }} · {{ recinto.municipio }} · {{ recinto.departamento.nombre }}</div>
+  </div>
+</div>
+
+<div class="card" style="max-width:460px;margin-bottom:1.25rem">
+  <h3>Agregar kiosco</h3>
+  <form method="POST" action="{{ url_for('panel.nuevo_kiosco', recinto_id=recinto.id) }}">
+    <div class="field">
+      <label for="nombre">Nombre del kiosco</label>
+      <input type="text" id="nombre" name="nombre" required placeholder="ej. Kiosco 1, Mesa A">
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Crear kiosco</button>
+  </form>
+  <p class="muted mt-1" style="font-size:.82rem">
+    Al crear el kiosco se generará automáticamente su código de vinculación (el código que se ingresa en el celular).
+  </p>
+</div>
+
+<h2>Kioscos del recinto</h2>
+
+{% if kioscos %}
+<div class="card-row">
+  {% for k in kioscos %}
+  <div class="card">
+    <div class="flex-between">
+      <div style="font-weight:bold">{{ k.nombre }}</div>
+      <span class="badge {{ 'badge-verde' if k.activo else 'badge-gris' }}">
+        {{ 'Activo' if k.activo else 'Inactivo' }}
+      </span>
+    </div>
+
+    <div style="margin:1rem 0;text-align:center">
+      <div class="muted" style="font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.3rem">
+        Código de vinculación
+      </div>
+      <div class="mono" style="font-size:1.8rem;font-weight:bold;letter-spacing:.12em;color:var(--ink)">
+        {{ k.codigo_vinculacion }}
+      </div>
+      <div class="muted" style="font-size:.78rem;margin-top:.3rem">
+        Ingresa este código en el celular para vincular el kiosco.<br>
+        La vinculación es permanente mientras la elección esté en curso.
+      </div>
+    </div>
+
+    {% if k.ip_local %}
+    <div class="muted" style="font-size:.8rem">IP local: <span class="mono">{{ k.ip_local }}</span></div>
+    {% endif %}
+
+    <form method="POST" action="{{ url_for('panel.toggle_kiosco', recinto_id=recinto.id, kiosco_id=k.id) }}" class="mt-1">
+      <button type="submit" class="btn btn-sm {{ 'btn-rojo' if k.activo else 'btn-verde' }}">
+        {{ 'Desactivar' if k.activo else 'Activar' }}
+      </button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">
+  Este recinto no tiene kioscos todavía. Usa el formulario de arriba para crear el primero.
+</div>
+{% endif %}
+
+{% endblock %}

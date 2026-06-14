@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Auditoría · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Transparencia</div>
+    <h1>Auditoría del sistema</h1>
+  </div>
+  <a href="{{ url_for('panel.verificar_recibo') }}" class="btn btn-ghost">Verificar recibo →</a>
+</div>
+
+{# ── Estado de nodos blockchain ───────────────────────── #}
+<div class="card">
+  <h3>Nodos blockchain</h3>
+  <div class="card-row">
+    {% for nodo_id, info in nodos.items() %}
+    <div style="border:1px solid var(--line);border-radius:var(--radius);padding:.85rem 1rem">
+      <div class="flex-between">
+        <span style="font-weight:bold">Nodo {{ nodo_id }}</span>
+        {% if info.get('nodo_actual') %}
+        <span class="badge badge-amarillo">Este nodo</span>
+        {% elif info.get('activo') %}
+        <span class="badge badge-verde">Activo</span>
+        {% else %}
+        <span class="badge badge-rojo">Sin conexión</span>
+        {% endif %}
+      </div>
+      {% if info.get('url') %}
+      <div class="mono muted" style="font-size:.8rem;margin-top:.3rem">{{ info.url }}</div>
+      {% endif %}
+      {% if info.get('longitud') %}
+      <div class="muted" style="font-size:.85rem;margin-top:.25rem">{{ info.longitud }} bloques</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ── Auditar cadena por elección ──────────────────────── #}
+<div class="card mt-1">
+  <h3>Auditar cadena de bloques por elección</h3>
+  {% if elecciones %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Elección</th><th>Departamento</th><th>Estado</th><th></th></tr>
+      </thead>
+      <tbody>
+        {% for e in elecciones %}
+        <tr>
+          <td>{{ e.titulo }}</td>
+          <td class="muted" style="font-size:.88rem">{{ e.departamento.nombre }}</td>
+          <td>
+            {% if e.estado == 'ACTIVA' %}<span class="badge badge-verde">Activa</span>
+            {% elif e.estado == 'CERRADA' %}<span class="badge badge-gris">Cerrada</span>
+            {% elif e.estado == 'CONFIGURACION' %}<span class="badge badge-amarillo">Configuración</span>
+            {% else %}<span class="badge badge-rojo">Suspendida</span>{% endif %}
+          </td>
+          <td>
+            <a href="{{ url_for('panel.auditoria_eleccion', eleccion_id=e.id) }}" class="btn btn-ghost btn-sm">Auditar →</a>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No hay elecciones disponibles para auditar.</div>
+  {% endif %}
+</div>
+
+{# ── Audit log reciente ───────────────────────────────── #}
+<div class="card mt-1">
+  <h3>Registro de eventos recientes</h3>
+  {% if logs %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Fecha</th><th>Acción</th><th>Descripción</th><th>Hash</th></tr>
+      </thead>
+      <tbody>
+        {% for log in logs %}
+        <tr>
+          <td class="muted" style="font-size:.8rem;white-space:nowrap">{{ log.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+          <td><span class="badge badge-gris" style="font-size:.75rem">{{ log.accion }}</span></td>
+          <td style="font-size:.88rem">{{ log.descripcion or '—' }}</td>
+          <td><span class="mono muted" style="font-size:.75rem">{{ log.hash_integridad[:12] }}…</span></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">No hay eventos registrados todavía.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

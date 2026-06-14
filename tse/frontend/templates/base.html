@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}TSE · Voto Cadena{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+<div class="app-shell">
+
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        Voto Cadena <span class="sub">· TSE Bolivia</span>
+      </div>
+
+      {% if usuario %}
+      <nav class="nav">
+        <a href="{{ url_for('panel.inicio') }}" class="{{ 'active' if active=='inicio' else '' }}">Inicio</a>
+
+        {% if usuario.rol_id == 1 %}
+          <a href="{{ url_for('panel.elecciones') }}" class="{{ 'active' if active=='elecciones' else '' }}">Elecciones</a>
+          <a href="{{ url_for('panel.recintos') }}" class="{{ 'active' if active=='recintos' else '' }}">Recintos y kioscos</a>
+          <a href="{{ url_for('panel.usuarios') }}" class="{{ 'active' if active=='usuarios' else '' }}">Usuarios</a>
+          <a href="{{ url_for('panel.padron_general') }}" class="{{ 'active' if active=='padron' else '' }}">Padrón</a>
+          <a href="{{ url_for('panel.resultados_general') }}" class="{{ 'active' if active=='resultados' else '' }}">Resultados</a>
+          <a href="{{ url_for('panel.auditoria') }}" class="{{ 'active' if active=='auditoria' else '' }}">Auditoría</a>
+        {% elif usuario.rol_id == 2 %}
+          <a href="{{ url_for('operador.verificar') }}" class="{{ 'active' if active=='verificar' else '' }}">Verificar votante</a>
+          <a href="{{ url_for('operador.kiosco') }}" class="{{ 'active' if active=='kiosco' else '' }}">Mi kiosco</a>
+        {% elif usuario.rol_id == 3 %}
+          <a href="{{ url_for('panel.elecciones') }}" class="{{ 'active' if active=='elecciones' else '' }}">Elecciones</a>
+          <a href="{{ url_for('panel.padron_general') }}" class="{{ 'active' if active=='padron' else '' }}">Padrón</a>
+          <a href="{{ url_for('panel.resultados_general') }}" class="{{ 'active' if active=='resultados' else '' }}">Resultados</a>
+          <a href="{{ url_for('panel.auditoria') }}" class="{{ 'active' if active=='auditoria' else '' }}">Auditoría</a>
+        {% endif %}
+      </nav>
+
+      <div class="user-chip">
+        <span>{{ usuario.nombre_completo }}</span>
+        <span class="rol-badge">{{ usuario.rol_nombre }}</span>
+        <a class="logout" href="{{ url_for('auth_web.logout') }}">Salir</a>
+      </div>
+      {% endif %}
+    </div>
+    <div class="tricolor"><span class="r"></span><span class="a"></span><span class="v"></span></div>
+  </header>
+
+  <main class="content">
+    {% with mensajes = get_flashed_messages(with_categories=true) %}
+      {% if mensajes %}
+        {% for categoria, mensaje in mensajes %}
+          <div class="alert alert-{{ categoria }}">{{ mensaje }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    Sistema de Votación Electrónica con Blockchain · Tribunal Supremo Electoral · Bolivia
+  </footer>
+</div>
+</body>
+</html>

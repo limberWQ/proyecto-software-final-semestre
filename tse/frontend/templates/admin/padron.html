@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Padrón · {{ eleccion.titulo }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">
+      <a href="{{ url_for('panel.elecciones') }}">Elecciones</a> ›
+      <a href="{{ url_for('panel.detalle_eleccion', eleccion_id=eleccion.id) }}">{{ eleccion.titulo }}</a>
+    </div>
+    <h1>Padrón electoral</h1>
+  </div>
+  {% if not es_auditor %}
+  <div class="gap-actions">
+    <form method="POST" action="{{ url_for('panel.construir_padron', eleccion_id=eleccion.id) }}"
+          onsubmit="return confirm('¿Consultar SEGIP y agregar ciudadanos habilitados?')">
+      <button type="submit" class="btn btn-primary">Consultar y agregar ciudadanos habilitados</button>
+    </form>
+    <form method="POST" action="{{ url_for('panel.actualizar_padron', eleccion_id=eleccion.id) }}"
+          onsubmit="return confirm('¿Sincronizar padrón con SEGIP?')">
+      <button type="submit" class="btn">Actualizar desde SEGIP</button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<div class="card-row" style="margin-bottom:1rem">
+  <div class="stat">
+    <div class="num">{{ total }}</div>
+    <div class="label">Total en el padrón</div>
+  </div>
+  <div class="stat">
+    <div class="num" style="color:var(--verde)">{{ total_votaron }}</div>
+    <div class="label">Ya votaron</div>
+  </div>
+  <div class="stat">
+    <div class="num" style="color:var(--ink-soft)">{{ total_no_votaron }}</div>
+    <div class="label">Pendientes de votar</div>
+  </div>
+  <div class="stat">
+    <div class="num">{{ ((total_votaron / total * 100) | round(1)) if total else 0 }}%</div>
+    <div class="label">Participación</div>
+  </div>
+</div>
+
+{# Filtros #}
+<div class="flex" style="gap:.5rem;margin-bottom:1rem">
+  <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id, filtro='todos') }}"
+     class="btn btn-sm {{ 'btn-primary' if filtro == 'todos' else 'btn-ghost' }}">Todos</a>
+  <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id, filtro='votaron') }}"
+     class="btn btn-sm {{ 'btn-verde' if filtro == 'votaron' else 'btn-ghost' }}">Solo votaron</a>
+  <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id, filtro='no_votaron') }}"
+     class="btn btn-sm {{ 'btn-primary' if filtro == 'no_votaron' else 'btn-ghost' }}">Solo pendientes</a>
+</div>
+
+<div class="card">
+  {% if padron %}
+  <p class="muted" style="font-size:.85rem;margin-bottom:.75rem">
+    Por privacidad, solo se muestra el CI de cada votante.
+    {% if filtro == 'votaron' %}Mostrando únicamente quienes <strong>ya emitieron su voto</strong>.
+    {% elif filtro == 'no_votaron' %}Mostrando únicamente quienes <strong>aún no han votado</strong>.
+    {% endif %}
+  </p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>CI</th>
+          <th>Estado en padrón</th>
+          <th>Voto</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in padron %}
+        <tr>
+          <td class="muted" style="font-size:.8rem">{{ loop.index }}</td>
+          <td><span class="mono" style="font-size:.95rem">{{ p.ci }}</span></td>
+          <td>
+            {% if not p.habilitado %}
+            <span class="badge badge-rojo">Inhabilitado</span>
+            {% else %}
+            <span class="badge badge-verde">Habilitado</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if p.ya_voto %}
+            <span class="badge badge-verde">✓ Votó</span>
+            {% else %}
+            <span class="badge badge-gris">Pendiente</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty">
+    {% if filtro == 'votaron' %}Nadie ha votado todavía.
+    {% elif filtro == 'no_votaron' %}Todos los inscritos ya votaron.
+    {% else %}El padrón está vacío.{% endif %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}

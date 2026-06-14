@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Nuevo usuario · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('panel.usuarios') }}">Usuarios</a></div>
+    <h1>Nuevo usuario</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width:560px">
+  <form method="POST" action="{{ url_for('panel.nuevo_usuario') }}">
+    <div class="field-row">
+      <div class="field">
+        <label for="ci">CI</label>
+        <input type="text" id="ci" name="ci" required class="mono" placeholder="ej. 1234567">
+      </div>
+      <div class="field">
+        <label for="rol_id">Rol</label>
+        <select id="rol_id" name="rol_id" required onchange="toggleRecinto(this.value)">
+          {% for r in roles %}
+          <option value="{{ r.id }}">{{ r.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="nombres">Nombres</label>
+        <input type="text" id="nombres" name="nombres" required>
+      </div>
+      <div class="field">
+        <label for="apellidos">Apellidos</label>
+        <input type="text" id="apellidos" name="apellidos" required>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="email">Correo electrónico</label>
+      <input type="email" id="email" name="email" required>
+    </div>
+
+    <div class="field">
+      <label for="password">Contraseña inicial</label>
+      <input type="password" id="password" name="password" required minlength="8">
+      <small class="muted">Mínimo 8 caracteres. El usuario deberá cambiarla en su primer ingreso.</small>
+    </div>
+
+    <div class="field" id="campo-recinto" style="display:none">
+      <label for="recinto_id">Recinto asignado</label>
+      <select id="recinto_id" name="recinto_id">
+        <option value="">— selecciona un recinto —</option>
+        {% for r in recintos %}
+        <option value="{{ r.id }}">{{ r.nombre }} ({{ r.departamento.nombre }})</option>
+        {% endfor %}
+      </select>
+      <small class="muted">Obligatorio para operadores.</small>
+    </div>
+
+    <div class="gap-actions">
+      <button type="submit" class="btn btn-primary">Crear usuario</button>
+      <a href="{{ url_for('panel.usuarios') }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+
+<script>
+function toggleRecinto(rolId) {
+  document.getElementById('campo-recinto').style.display = rolId == '2' ? '' : 'none';
+}
+toggleRecinto(document.getElementById('rol_id').value);
+</script>
+{% endblock %}

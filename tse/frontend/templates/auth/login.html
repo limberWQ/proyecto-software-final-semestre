@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Iniciar sesión · Voto Cadena</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
+</head>
+<body>
+  <div class="login-shell">
+    <div class="login-card">
+      <div class="tricolor"><span class="r"></span><span class="a"></span><span class="v"></span></div>
+      <div class="body">
+        <h1>Voto Cadena</h1>
+        <p class="muted">Tribunal Supremo Electoral · Bolivia</p>
+
+        {% with mensajes = get_flashed_messages(with_categories=true) %}
+          {% if mensajes %}
+            {% for categoria, mensaje in mensajes %}
+              <div class="alert alert-{{ categoria }}">{{ mensaje }}</div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('auth_web.login') }}">
+          <div class="field">
+            <label for="email">Correo electrónico</label>
+            <input type="email" id="email" name="email" required autofocus>
+          </div>
+          <div class="field">
+            <label for="password">Contraseña</label>
+            <input type="password" id="password" name="password" required>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block">Ingresar</button>
+        </form>
+
+        <p class="muted mt-1" style="font-size:.8rem">
+          Acceso exclusivo para administradores, operadores de mesa y auditores del TSE.
+        </p>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

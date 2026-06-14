@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Padrón · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Electoral</div>
+    <h1>Padrón electoral</h1>
+  </div>
+</div>
+
+<p class="muted">Selecciona una elección para ver y gestionar su padrón electoral.</p>
+
+{% if elecciones %}
+<div class="card-row">
+  {% for e in elecciones %}
+  <div class="card">
+    <div class="flex-between" style="margin-bottom:.4rem">
+      <span class="mono muted" style="font-size:.78rem">{{ e.codigo }}</span>
+      {% if e.estado == 'ACTIVA' %}<span class="badge badge-verde">Activa</span>
+      {% elif e.estado == 'CERRADA' %}<span class="badge badge-gris">Cerrada</span>
+      {% elif e.estado == 'CONFIGURACION' %}<span class="badge badge-amarillo">Configuración</span>
+      {% else %}<span class="badge badge-rojo">Suspendida</span>{% endif %}
+    </div>
+    <div style="font-weight:bold">{{ e.titulo }}</div>
+    <div class="muted" style="font-size:.85rem">{{ e.departamento.nombre }}</div>
+
+    <div class="gap-actions mt-1">
+      <a href="{{ url_for('panel.padron_eleccion', eleccion_id=e.id) }}" class="btn btn-ghost btn-sm">Ver padrón →</a>
+      <a href="{{ url_for('panel.padron_eleccion', eleccion_id=e.id, filtro='votaron') }}" class="btn btn-ghost btn-sm">Solo votaron</a>
+      <a href="{{ url_for('panel.padron_eleccion', eleccion_id=e.id, filtro='no_votaron') }}" class="btn btn-ghost btn-sm">No votaron</a>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">No hay elecciones registradas todavía.</div>
+{% endif %}
+
+{% endblock %}

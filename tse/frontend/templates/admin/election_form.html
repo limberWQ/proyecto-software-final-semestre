@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Nueva elección · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('panel.elecciones') }}">Elecciones</a></div>
+    <h1>Nueva elección</h1>
+  </div>
+</div>
+
+<div class="card" style="max-width:640px">
+  <form method="POST" action="{{ url_for('panel.nueva_eleccion') }}">
+    <div class="field-row">
+      <div class="field">
+        <label for="codigo">Código único</label>
+        <input type="text" id="codigo" name="codigo" required placeholder="ej. PRES-LAPAZ-2025" class="mono">
+      </div>
+      <div class="field">
+        <label for="tipo">Tipo de elección</label>
+        <select id="tipo" name="tipo" required>
+          <option value="PRESIDENCIAL">Presidencial</option>
+          <option value="MUNICIPAL">Municipal</option>
+          <option value="DEPARTAMENTAL">Departamental</option>
+          <option value="REFERENDUM">Referéndum</option>
+          <option value="ASAMBLEA">Asamblea</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="titulo">Título de la elección</label>
+      <input type="text" id="titulo" name="titulo" required placeholder="ej. Elecciones Presidenciales 2025 — La Paz">
+    </div>
+
+    <div class="field">
+      <label for="departamento_id">Departamento</label>
+      <select id="departamento_id" name="departamento_id" required>
+        <option value="">— selecciona un departamento —</option>
+        {% for d in departamentos %}
+        <option value="{{ d.id }}">{{ d.nombre }}</option>
+        {% endfor %}
+      </select>
+      <small class="muted">Cada departamento maneja su propia elección de forma independiente.</small>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label for="fecha_inicio">Fecha y hora de inicio</label>
+        <input type="datetime-local" id="fecha_inicio" name="fecha_inicio" required>
+      </div>
+      <div class="field">
+        <label for="fecha_fin">Fecha y hora de cierre (opcional)</label>
+        <input type="datetime-local" id="fecha_fin" name="fecha_fin">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="descripcion">Descripción (opcional)</label>
+      <textarea id="descripcion" name="descripcion" rows="3" placeholder="Descripción o instrucciones adicionales…"></textarea>
+    </div>
+
+    <p class="muted" style="font-size:.85rem">
+      Al crear la elección se generará automáticamente un par de claves RSA para el cifrado de votos
+      y el bloque génesis de su blockchain. La elección inicia en estado <strong>Configuración</strong>
+      y podrá ser habilitada cuando esté lista.
+    </p>
+
+    <div class="gap-actions">
+      <button type="submit" class="btn btn-primary">Crear elección</button>
+      <a href="{{ url_for('panel.elecciones') }}" class="btn btn-ghost">Cancelar</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}Verificar votante · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Mesa de operador</div>
+    <h1>Verificar votante</h1>
+  </div>
+  {% if eleccion %}
+  <div>
+    <span class="badge badge-verde">{{ eleccion.titulo }}</span>
+  </div>
+  {% endif %}
+</div>
+
+{% if not eleccion %}
+<div class="card">
+  <div class="empty">
+    <div style="font-size:2rem;margin-bottom:.5rem">🔒</div>
+    No hay ninguna elección activa asignada a tu recinto en este momento.<br>
+    Contacta al administrador para habilitar una elección.
+  </div>
+</div>
+{% else %}
+
+<div class="card" style="max-width:480px">
+  <h3>Consultar CI del votante</h3>
+  <form method="POST" action="{{ url_for('operador.verificar') }}">
+    <div class="field">
+      <label for="ci">Número de CI</label>
+      <input type="text" id="ci" name="ci" required autofocus
+             class="mono" placeholder="ej. 1234567"
+             value="{{ ci_buscado or '' }}"
+             style="font-size:1.2rem;padding:.65rem .85rem">
+    </div>
+    <button type="submit" class="btn btn-primary btn-block">Verificar identidad</button>
+  </form>
+</div>
+
+{% if votante %}
+<div class="card mt-1" style="max-width:480px">
+  <div class="flex-between">
+    <h3 style="margin:0">Resultado de verificación</h3>
+    {% if votante.ya_voto %}
+    <span class="badge badge-rojo">Ya votó</span>
+    {% elif not votante.habilitado %}
+    <span class="badge badge-rojo">Inhabilitado</span>
+    {% else %}
+    <span class="badge badge-verde">Habilitado para votar</span>
+    {% endif %}
+  </div>
+
+  <table style="margin-top:.75rem;width:auto">
+    <tr><th style="padding-right:1.5rem;color:var(--ink-soft)">CI</th><td class="mono">{{ votante.ci }}</td></tr>
+    <tr><th>Recinto</th><td>{{ votante.recinto.nombre if votante.recinto else '—' }}</td></tr>
+    <tr><th>Mesa</th><td>{{ votante.mesa_numero or '—' }}</td></tr>
+  </table>
+
+  {% if not votante.ya_voto and votante.habilitado %}
+<hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+<h3>Habilitar kiosco</h3>
+
+{% set kioscos_activos = [] %}
+{% for k in (votante.recinto.kioscos if votante.recinto else []) %}
+  {% if k.activo %}{% set _ = kioscos_activos.append(k) %}{% endif %}
+{% endfor %}
+
+{% if kioscos_activos %}
+  {% if kioscos_activos|length == 1 %}
+  {# Solo hay un kiosco — habilitar directo sin selección #}
+  <form method="POST" action="{{ url_for('operador.habilitar_kiosco') }}">
+    <input type="hidden" name="padron_id" value="{{ votante.id }}">
+    <input type="hidden" name="kiosco_id" value="{{ kioscos_activos[0].id }}">
+    <p class="muted" style="font-size:.88rem;margin-bottom:.75rem">
+      Kiosco: <strong>{{ kioscos_activos[0].nombre }}</strong>
+      <span class="mono" style="font-size:.8rem">({{ kioscos_activos[0].codigo_vinculacion }})</span>
+    </p>
+    <button type="submit" class="btn btn-verde btn-block"
+            onclick="return confirm('¿Habilitar el kiosco para este votante? Tendrá 5 minutos.')">
+      ▶ Habilitar kiosco
+    </button>
+  </form>
+
+  {% else %}
+  {# Hay varios kioscos en el recinto — mostrar selector #}
+  <form method="POST" action="{{ url_for('operador.habilitar_kiosco') }}">
+    <input type="hidden" name="padron_id" value="{{ votante.id }}">
+    <div class="field">
+      <label>Selecciona el kiosco</label>
+      {% for k in kioscos_activos %}
+      <label style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;cursor:pointer">
+        <input type="radio" name="kiosco_id" value="{{ k.id }}" required
+               {{ 'checked' if loop.first else '' }}>
+        <span>{{ k.nombre }}</span>
+        <span class="mono muted" style="font-size:.8rem">{{ k.codigo_vinculacion }}</span>
+      </label>
+      {% endfor %}
+    </div>
+    <button type="submit" class="btn btn-verde btn-block"
+            onclick="return confirm('¿Habilitar el kiosco para este votante?')">
+      ▶ Habilitar kiosco
+    </button>
+  </form>
+  {% endif %}
+
+{% else %}
+<p class="muted" style="font-size:.88rem">
+  No hay kioscos activos en el recinto de este votante.
+</p>
+{% endif %}
+
+{% elif votante.ya_voto %}
+<div class="alert alert-error" style="margin-top:1rem">
+  Este ciudadano ya emitió su voto en esta elección.
+</div>
+{% elif not votante.habilitado %}
+<div class="alert alert-error" style="margin-top:1rem">
+  Inhabilitado: {{ votante.motivo_inhabilitacion or 'sin motivo registrado' }}
+</div>
+{% endif %}
+
+{% elif ci_buscado and not votante %}
+<div class="card mt-1" style="max-width:480px">
+  <div class="empty" style="padding:1.25rem">
+    <div style="font-size:1.8rem">🔍</div>
+    No se encontró el CI <span class="mono">{{ ci_buscado }}</span> en el padrón de esta elección.
+  </div>
+</div>
+{% endif %}
+{% endif %}
+
+{% endblock %}

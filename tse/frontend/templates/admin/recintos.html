@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Recintos · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Infraestructura</div>
+    <h1>Recintos y kioscos</h1>
+  </div>
+</div>
+
+<div class="card">
+  <h3>Crear nuevo recinto</h3>
+  <form method="POST" action="{{ url_for('panel.nuevo_recinto') }}">
+    <div class="field-row">
+      <div class="field">
+        <label for="codigo">Código</label>
+        <input type="text" id="codigo" name="codigo" required placeholder="ej. REC-LP-001" class="mono">
+      </div>
+      <div class="field">
+        <label for="departamento_id">Departamento</label>
+        <select id="departamento_id" name="departamento_id" required>
+          {% for d in departamentos %}
+          <option value="{{ d.id }}" {{ 'selected' if depto_filtro == d.id }}>{{ d.nombre }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="field">
+        <label for="total_mesas">N° de mesas</label>
+        <input type="number" id="total_mesas" name="total_mesas" min="1" value="1">
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="nombre">Nombre del recinto</label>
+        <input type="text" id="nombre" name="nombre" required placeholder="ej. Unidad Educativa…">
+      </div>
+      <div class="field">
+        <label for="municipio">Municipio</label>
+        <input type="text" id="municipio" name="municipio" required>
+      </div>
+    </div>
+    <div class="field">
+      <label for="direccion">Dirección (opcional)</label>
+      <input type="text" id="direccion" name="direccion" placeholder="Calle, zona…">
+    </div>
+    <button type="submit" class="btn btn-primary btn-sm">Crear recinto</button>
+  </form>
+</div>
+
+<div class="flex-between" style="margin:1.25rem 0 .75rem">
+  <h2 style="margin:0">Recintos registrados</h2>
+  <form method="GET" class="flex" style="gap:.5rem">
+    <select name="departamento_id" style="width:auto">
+      <option value="">Todos los departamentos</option>
+      {% for d in departamentos %}
+      <option value="{{ d.id }}" {{ 'selected' if depto_filtro == d.id }}>{{ d.nombre }}</option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-sm">Filtrar</button>
+  </form>
+</div>
+
+{% if recintos %}
+<div class="card-row">
+  {% for r in recintos %}
+  <div class="card">
+    <div class="flex-between">
+      <div>
+        <div class="mono muted" style="font-size:.8rem">{{ r.codigo }}</div>
+        <div style="font-weight:bold">{{ r.nombre }}</div>
+        <div class="muted" style="font-size:.85rem">{{ r.municipio }} · {{ r.departamento.nombre }}</div>
+      </div>
+      <div>
+        <span class="badge {{ 'badge-verde' if r.activo else 'badge-gris' }}">
+          {{ 'Activo' if r.activo else 'Inactivo' }}
+        </span>
+      </div>
+    </div>
+    <div class="muted mt-1" style="font-size:.85rem">{{ r.total_mesas }} mesa{{ 's' if r.total_mesas != 1 }} · {{ r.kioscos|length }} kiosco{{ 's' if r.kioscos|length != 1 }}</div>
+    <a href="{{ url_for('panel.detalle_recinto', recinto_id=r.id) }}" class="btn btn-ghost btn-sm mt-1">Ver kioscos →</a>
+  </div>
+  {% endfor %}
+</div>
+{% else %}
+<div class="empty">No hay recintos registrados con ese filtro.</div>
+{% endif %}
+
+{% endblock %}

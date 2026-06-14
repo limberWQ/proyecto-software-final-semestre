@@ -1,0 +1,117 @@
+version: "3.9"
+
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: votacion_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./init_final.sql:/docker-entrypoint-initdb.d/init_final.sql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot_pass"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  segip:
+    build: ./segip
+    container_name: segip_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://segip_user:segip_pass@db:3306/segip_db
+    ports:
+      - "5001:5001"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # ──────────────────────────────────────────────────────────
+  #  Nodos del TSE (blockchain distribuida — 3 réplicas)
+  #  Comparten la misma BD pero mantienen su propia copia de
+  #  chain.json (volumen independiente), sincronizándose vía
+  #  /blockchain/* (node_sync.py).
+  # ──────────────────────────────────────────────────────────
+
+  tse_nodo1:
+    build: ./tse
+    container_name: tse_nodo1
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://tse_user:tse_pass@db:3306/tse_db
+      SEGIP_API_URL: http://segip:5001
+      SEGIP_API_KEY: TSE-SECRET-KEY-2025
+      NODE_ID: "1"
+      NODO_1_URL: http://tse_nodo1:5000
+      NODO_2_URL: http://tse_nodo2:5000
+      NODO_3_URL: http://tse_nodo3:5000
+      SECRET_KEY: cambia-esta-clave
+      JWT_SECRET_KEY: cambia-esta-clave-jwt
+    ports:
+      - "5000:5000"
+    volumes:
+      - tse_nodo1_chain:/app/blockchain_data
+    depends_on:
+      db:
+        condition: service_healthy
+      segip:
+        condition: service_started
+
+  tse_nodo2:
+    build: ./tse
+    container_name: tse_nodo2
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://tse_user:tse_pass@db:3306/tse_db
+      SEGIP_API_URL: http://segip:5001
+      SEGIP_API_KEY: TSE-SECRET-KEY-2025
+      NODE_ID: "2"
+      NODO_1_URL: http://tse_nodo1:5000
+      NODO_2_URL: http://tse_nodo2:5000
+      NODO_3_URL: http://tse_nodo3:5000
+      SECRET_KEY: cambia-esta-clave
+      JWT_SECRET_KEY: cambia-esta-clave-jwt
+    ports:
+      - "5010:5000"
+    volumes:
+      - tse_nodo2_chain:/app/blockchain_data
+    depends_on:
+      db:
+        condition: service_healthy
+      segip:
+        condition: service_started
+
+  tse_nodo3:
+    build: ./tse
+    container_name: tse_nodo3
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: mysql+pymysql://tse_user:tse_pass@db:3306/tse_db
+      SEGIP_API_URL: http://segip:5001
+      SEGIP_API_KEY: TSE-SECRET-KEY-2025
+      NODE_ID: "3"
+      NODO_1_URL: http://tse_nodo1:5000
+      NODO_2_URL: http://tse_nodo2:5000
+      NODO_3_URL: http://tse_nodo3:5000
+      SECRET_KEY: cambia-esta-clave
+      JWT_SECRET_KEY: cambia-esta-clave-jwt
+    ports:
+      - "5020:5000"
+    volumes:
+      - tse_nodo3_chain:/app/blockchain_data
+    depends_on:
+      db:
+        condition: service_healthy
+      segip:
+        condition: service_started
+
+volumes:
+  db_data:
+  tse_nodo1_chain:
+  tse_nodo2_chain:
+  tse_nodo3_chain:

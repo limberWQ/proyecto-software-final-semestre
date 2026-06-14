@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Mis kioscos · Voto Cadena{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Panel de operador</div>
+    <h1>Mis kioscos</h1>
+  </div>
+  {% if eleccion %}
+  <span class="badge badge-verde">{{ eleccion.titulo }}</span>
+  {% endif %}
+</div>
+
+{% if not kioscos %}
+<div class="empty">
+  No hay kioscos activos asignados a tu recinto.
+</div>
+{% else %}
+<div class="card-row">
+  {% for k in kioscos %}
+  {% set est = estados_kiosco.get(k.id, {'estado': 'libre'}) %}
+  <div class="card">
+    <div class="flex-between">
+      <div style="font-weight:bold;font-size:1.05rem">{{ k.nombre }}</div>
+      {% if est.estado == 'habilitado' %}
+      <span class="badge badge-verde">Habilitado</span>
+      {% else %}
+      <span class="badge badge-gris">Libre</span>
+      {% endif %}
+    </div>
+
+    <div style="text-align:center;margin:1rem 0">
+      <div class="muted" style="font-size:.78rem;text-transform:uppercase;letter-spacing:.06em">Código de vinculación</div>
+      <div class="mono" style="font-size:1.6rem;font-weight:bold;letter-spacing:.1em">{{ k.codigo_vinculacion }}</div>
+    </div>
+
+    {% if est.estado == 'habilitado' %}
+    <div class="timer-pill" style="width:100%;justify-content:center" id="timer-{{ k.id }}"
+         data-segundos="{{ est.segundos }}">
+      ⏱ <span id="tiempo-{{ k.id }}">{{ est.segundos }}s</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<script>
+// Countdown para cada kiosco habilitado
+document.querySelectorAll('[data-segundos]').forEach(function(el) {
+  var kId = el.id.replace('timer-', '');
+  var span = document.getElementById('tiempo-' + kId);
+  var secs = parseInt(el.dataset.segundos);
+
+  var iv = setInterval(function() {
+    secs--;
+    if (secs <= 0) {
+      clearInterval(iv);
+      el.style.background = 'var(--rojo-bg)';
+      el.style.borderColor = '#f6d3cf';
+      el.style.color = 'var(--rojo)';
+      span.textContent = 'Sesión expirada';
+    } else {
+      var m = Math.floor(secs / 60);
+      var s = secs % 60;
+      span.textContent = (m > 0 ? m + 'm ' : '') + s + 's';
+    }
+  }, 1000);
+});
+</script>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}Cadena · {{ eleccion.titulo }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow"><a href="{{ url_for('panel.auditoria') }}">Auditoría</a></div>
+    <h1>Cadena de bloques</h1>
+    <div class="muted" style="font-size:.88rem;margin-top:.25rem">{{ eleccion.titulo }} · {{ eleccion.departamento.nombre }}</div>
+  </div>
+  <div class="flex" style="gap:.6rem">
+    {% if valida %}
+    <span class="badge badge-verde" style="font-size:.85rem">✓ Cadena íntegra</span>
+    {% else %}
+    <span class="badge badge-rojo" style="font-size:.85rem">⚠ Cadena comprometida</span>
+    {% endif %}
+    <span class="badge badge-gris">{{ longitud }} bloques</span>
+  </div>
+</div>
+
+{% if not valida %}
+<div class="alert alert-error">
+  ⚠ La cadena de bloques de esta elección presenta inconsistencias. Algún bloque fue alterado o la cadena fue manipulada. Se recomienda comparar con los otros nodos.
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Timestamp</th>
+          <th>Hash</th>
+          <th>Hash anterior</th>
+          <th>Merkle root</th>
+          <th>Txs</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for b in bloques %}
+        <tr style="{{ 'background:var(--verde-bg)' if loop.index0 == 0 else '' }}">
+          <td style="font-weight:bold">
+            {% if loop.index0 == 0 %}<span class="badge badge-gris" style="font-size:.72rem">génesis</span>{% else %}{{ b.index }}{% endif %}
+          </td>
+          <td class="mono muted" style="font-size:.78rem;white-space:nowrap">{{ b.timestamp[:19] }}</td>
+          <td>
+            <span class="mono" style="font-size:.75rem;color:var(--verde)">{{ b.hash[:16] }}…</span>
+          </td>
+          <td>
+            <span class="mono muted" style="font-size:.75rem">{{ b.previous_hash[:16] }}…</span>
+          </td>
+          <td>
+            <span class="mono muted" style="font-size:.75rem">{{ b.merkle_root[:12] }}…</span>
+          </td>
+          <td style="text-align:center">
+            {% if b.transactions | length > 0 %}
+            <span class="badge badge-verde" style="font-size:.72rem">{{ b.transactions | length }}</span>
+            {% else %}
+            <span class="muted" style="font-size:.82rem">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="muted mt-1" style="font-size:.82rem">
+    Los campos Hash, Hash anterior y Merkle root se muestran truncados. Los votos dentro de cada bloque están cifrados con RSA — sin la clave privada de la elección, es imposible conocer el candidato votado.
+  </p>
+</div>
+
+{% endblock %}
