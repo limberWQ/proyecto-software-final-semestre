@@ -11,17 +11,26 @@
     <h1>Padrón electoral</h1>
   </div>
   {% if not es_auditor %}
-  <div class="gap-actions">
-    <form method="POST" action="{{ url_for('panel.construir_padron', eleccion_id=eleccion.id) }}"
-          onsubmit="return confirm('¿Consultar SEGIP y agregar ciudadanos habilitados?')">
-      <button type="submit" class="btn btn-primary">Consultar y agregar ciudadanos habilitados</button>
-    </form>
-    <form method="POST" action="{{ url_for('panel.actualizar_padron', eleccion_id=eleccion.id) }}"
-          onsubmit="return confirm('¿Sincronizar padrón con SEGIP?')">
-      <button type="submit" class="btn">Actualizar desde SEGIP</button>
-    </form>
-  </div>
+<div class="gap-actions">
+
+  {% if eleccion.estado == 'CONFIGURACION' %}
+  <form method="POST" action="{{ url_for('panel.construir_padron', eleccion_id=eleccion.id) }}"
+        onsubmit="return confirm('¿Consultar SEGIP y agregar ciudadanos habilitados?')">
+    <button type="submit" class="btn btn-primary">
+      Consultar y agregar ciudadanos habilitados
+    </button>
+  </form>
+
+  <form method="POST" action="{{ url_for('panel.actualizar_padron', eleccion_id=eleccion.id) }}"
+        onsubmit="return confirm('¿Sincronizar padrón con SEGIP?')">
+    <button type="submit" class="btn">
+      Actualizar desde SEGIP
+    </button>
+  </form>
   {% endif %}
+
+</div>
+{% endif %}
 </div>
 
 <div class="card-row" style="margin-bottom:1rem">

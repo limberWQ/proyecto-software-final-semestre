@@ -202,15 +202,27 @@
 {% elif tab_activo == 'padron' %}
 {% if usuario.rol_id == 1 %}
 <div class="gap-actions" style="margin-bottom:1rem">
+
+  {% if eleccion.estado == 'CONFIGURACION' %}
   <form method="POST" action="{{ url_for('panel.construir_padron', eleccion_id=eleccion.id) }}"
         onsubmit="return confirm('¿Consultar SEGIP y agregar los ciudadanos habilitados al padrón?')">
-    <button type="submit" class="btn btn-primary">Consultar y agregar ciudadanos habilitados</button>
+    <button type="submit" class="btn btn-primary">
+      Consultar y agregar ciudadanos habilitados
+    </button>
   </form>
+
   <form method="POST" action="{{ url_for('panel.actualizar_padron', eleccion_id=eleccion.id) }}"
         onsubmit="return confirm('¿Sincronizar el padrón con SEGIP? Se inhabilitarán ciudadanos fallecidos.')">
-    <button type="submit" class="btn">Actualizar padrón desde SEGIP</button>
+    <button type="submit" class="btn">
+      Actualizar padrón desde SEGIP
+    </button>
   </form>
-  <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id) }}" class="btn btn-ghost">Ver padrón completo →</a>
+
+  <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id) }}" class="btn btn-ghost">
+  Ver padrón completo →
+  </a>
+  {% endif %}
+
 </div>
 {% endif %}
 

@@ -85,9 +85,7 @@ def detalle_eleccion(eleccion_id):
     recintos_asignados = election_service.recintos_de_eleccion(eleccion_id)
     recintos_departamento = Recinto.query.filter_by(departamento_id=eleccion.departamento_id, activo=True).all()
 
-    total_padron = 0
-    if eleccion.estado != "CONFIGURACION":
-        total_padron = len(padron_service.listar_padron(eleccion_id))
+    total_padron = len(padron_service.listar_padron(eleccion_id))
 
     return render_template(
         "admin/dashboard_eleccion.html",

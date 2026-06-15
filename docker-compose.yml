@@ -25,18 +25,14 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: mysql+pymysql://segip_user:segip_pass@db:3306/segip_db
+      FLASK_DEBUG: "1"
     ports:
       - "5001:5001"
+    volumes:
+      - ./segip:/app
     depends_on:
       db:
         condition: service_healthy
-
-  # ──────────────────────────────────────────────────────────
-  #  Nodos del TSE (blockchain distribuida — 3 réplicas)
-  #  Comparten la misma BD pero mantienen su propia copia de
-  #  chain.json (volumen independiente), sincronizándose vía
-  #  /blockchain/* (node_sync.py).
-  # ──────────────────────────────────────────────────────────
 
   tse_nodo1:
     build: ./tse
@@ -52,9 +48,11 @@ services:
       NODO_3_URL: http://tse_nodo3:5000
       SECRET_KEY: cambia-esta-clave
       JWT_SECRET_KEY: cambia-esta-clave-jwt
+      FLASK_DEBUG: "1"
     ports:
       - "5000:5000"
     volumes:
+      - ./tse:/app
       - tse_nodo1_chain:/app/blockchain_data
     depends_on:
       db:
@@ -76,9 +74,11 @@ services:
       NODO_3_URL: http://tse_nodo3:5000
       SECRET_KEY: cambia-esta-clave
       JWT_SECRET_KEY: cambia-esta-clave-jwt
+      FLASK_DEBUG: "1"
     ports:
       - "5010:5000"
     volumes:
+      - ./tse:/app
       - tse_nodo2_chain:/app/blockchain_data
     depends_on:
       db:
@@ -100,9 +100,11 @@ services:
       NODO_3_URL: http://tse_nodo3:5000
       SECRET_KEY: cambia-esta-clave
       JWT_SECRET_KEY: cambia-esta-clave-jwt
+      FLASK_DEBUG: "1"
     ports:
       - "5020:5000"
     volumes:
+      - ./tse:/app
       - tse_nodo3_chain:/app/blockchain_data
     depends_on:
       db:
