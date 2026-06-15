@@ -1,0 +1,11 @@
+[
+  {
+    "index": 0,
+    "timestamp": "2026-06-15T19:29:04.011882",
+    "transactions": [],
+    "previous_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "merkle_root": "aeebad4a796fcc2e15dc4c6061b45ed9b373f26adfc798ca7d2d8cc58182718e",
+    "nonce": 0,
+    "hash": "685b7a921edeaf192d202090e0faed6d485dc3b9312c8cccb8819ec33adb8f6d"
+  }
+]

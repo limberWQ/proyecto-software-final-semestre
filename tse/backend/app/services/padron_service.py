@@ -1,7 +1,7 @@
 from datetime import date
 
 from app.extensions import db
-from app.models import PadronElectoral, Eleccion, Recinto
+from app.models import PadronElectoral, Eleccion, Recinto, RecintoEleccion
 from app.services import segip_service
 from app.services.audit_service import registrar_evento
 
@@ -237,6 +237,132 @@ def asignar_recinto(padron_id: int, recinto_id: int, mesa_numero: int, usuario_i
         ip=ip,
     )
     return registro
+
+
+ELECTORES_POR_MESA = 600  # ajustar según normativa
+
+
+def distribuir_padron(eleccion_id: int, usuario_id: int, ip: str | None = None) -> dict:
+    """
+    Distribuye automáticamente entre los recintos de la elección
+    (tabla recintos_elecciones) los registros del padrón que aún no
+    tienen recinto/mesa asignados (recinto_id IS NULL), agrupando por
+    departamento_id.
+
+    Llena cada mesa hasta ELECTORES_POR_MESA antes de pasar a la
+    siguiente, y cada recinto hasta total_mesas antes de pasar al
+    siguiente recinto del mismo departamento.
+    """
+    eleccion = Eleccion.query.get(eleccion_id)
+    if not eleccion:
+        raise PadronError("Elección no encontrada")
+
+    pendientes = (
+        PadronElectoral.query
+        .filter_by(eleccion_id=eleccion_id, recinto_id=None)
+        .order_by(PadronElectoral.departamento_id, PadronElectoral.apellido_paterno)
+        .all()
+    )
+
+    if not pendientes:
+        return {
+            "asignados": 0,
+            "sin_recintos_disponibles": 0,
+            "total_pendientes": 0,
+        }
+
+    pendientes_por_depto: dict[int, list[PadronElectoral]] = {}
+    for p in pendientes:
+        pendientes_por_depto.setdefault(p.departamento_id, []).append(p)
+
+    asignados = 0
+    sin_recintos = 0
+
+    for departamento_id, registros in pendientes_por_depto.items():
+        recintos = (
+            Recinto.query
+            .join(RecintoEleccion, RecintoEleccion.recinto_id == Recinto.id)
+            .filter(
+                RecintoEleccion.eleccion_id == eleccion_id,
+                Recinto.departamento_id == departamento_id,
+                Recinto.activo == True,
+            )
+            .order_by(Recinto.codigo)
+            .all()
+        )
+
+        if not recintos:
+            sin_recintos += len(registros)
+            continue
+
+        recinto_ids = [r.id for r in recintos]
+
+        conteo_mesas: dict[tuple[int, int], int] = {}
+        ocupados = (
+            db.session.query(
+                PadronElectoral.recinto_id,
+                PadronElectoral.mesa_numero,
+                db.func.count(PadronElectoral.id),
+            )
+            .filter(
+                PadronElectoral.eleccion_id == eleccion_id,
+                PadronElectoral.recinto_id.in_(recinto_ids),
+            )
+            .group_by(PadronElectoral.recinto_id, PadronElectoral.mesa_numero)
+            .all()
+        )
+        for recinto_id, mesa_numero, total in ocupados:
+            if mesa_numero is not None:
+                conteo_mesas[(recinto_id, mesa_numero)] = total
+
+        def generar_slots():
+            for recinto in recintos:
+                total_mesas = recinto.total_mesas or 1
+                for mesa in range(1, total_mesas + 1):
+                    yield recinto, mesa
+
+        slots = generar_slots()
+        recinto_actual, mesa_actual = next(slots, (None, None))
+
+        for registro in registros:
+            if recinto_actual is None:
+                sin_recintos += 1
+                continue
+
+            actuales = conteo_mesas.get((recinto_actual.id, mesa_actual), 0)
+            while actuales >= ELECTORES_POR_MESA:
+                recinto_actual, mesa_actual = next(slots, (None, None))
+                if recinto_actual is None:
+                    break
+                actuales = conteo_mesas.get((recinto_actual.id, mesa_actual), 0)
+
+            if recinto_actual is None:
+                sin_recintos += 1
+                continue
+
+            registro.recinto_id = recinto_actual.id
+            registro.mesa_numero = mesa_actual
+            conteo_mesas[(recinto_actual.id, mesa_actual)] = actuales + 1
+            asignados += 1
+
+    db.session.commit()
+
+    registrar_evento(
+        usuario_id=usuario_id,
+        eleccion_id=eleccion_id,
+        accion="PADRON_DISTRIBUIDO",
+        descripcion=(
+            f"Distribución automática de recintos/mesas: {asignados} asignados, "
+            f"{sin_recintos} sin recinto disponible en su departamento"
+        ),
+        ip=ip,
+    )
+
+    return {
+        "asignados": asignados,
+        "sin_recintos_disponibles": sin_recintos,
+        "total_pendientes": len(pendientes),
+    }
 
 
 def buscar_votante(eleccion_id: int, ci: str) -> PadronElectoral | None:

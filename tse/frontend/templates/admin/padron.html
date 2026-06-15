@@ -1,6 +1,5 @@
 {% extends "base.html" %}
 {% block title %}Padrón · {{ eleccion.titulo }}{% endblock %}
-
 {% block content %}
 <div class="page-header">
   <div>
@@ -12,7 +11,6 @@
   </div>
   {% if not es_auditor %}
 <div class="gap-actions">
-
   {% if eleccion.estado == 'CONFIGURACION' %}
   <form method="POST" action="{{ url_for('panel.construir_padron', eleccion_id=eleccion.id) }}"
         onsubmit="return confirm('¿Consultar SEGIP y agregar ciudadanos habilitados?')">
@@ -20,19 +18,22 @@
       Consultar y agregar ciudadanos habilitados
     </button>
   </form>
-
   <form method="POST" action="{{ url_for('panel.actualizar_padron', eleccion_id=eleccion.id) }}"
         onsubmit="return confirm('¿Sincronizar padrón con SEGIP?')">
     <button type="submit" class="btn">
       Actualizar desde SEGIP
     </button>
   </form>
+  <form method="POST" action="{{ url_for('panel.distribuir_padron', eleccion_id=eleccion.id) }}"
+        onsubmit="return confirm('¿Distribuir automáticamente el padrón entre recintos y mesas?')">
+    <button type="submit" class="btn">
+      Distribuir en recintos y mesas
+    </button>
+  </form>
   {% endif %}
-
 </div>
 {% endif %}
 </div>
-
 <div class="card-row" style="margin-bottom:1rem">
   <div class="stat">
     <div class="num">{{ total }}</div>
@@ -51,7 +52,6 @@
     <div class="label">Participación</div>
   </div>
 </div>
-
 {# Filtros #}
 <div class="flex" style="gap:.5rem;margin-bottom:1rem">
   <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id, filtro='todos') }}"
@@ -61,7 +61,6 @@
   <a href="{{ url_for('panel.padron_eleccion', eleccion_id=eleccion.id, filtro='no_votaron') }}"
      class="btn btn-sm {{ 'btn-primary' if filtro == 'no_votaron' else 'btn-ghost' }}">Solo pendientes</a>
 </div>
-
 <div class="card">
   {% if padron %}
   <p class="muted" style="font-size:.85rem;margin-bottom:.75rem">
@@ -76,6 +75,7 @@
         <tr>
           <th>#</th>
           <th>CI</th>
+          <th>Recinto / Mesa</th>
           <th>Estado en padrón</th>
           <th>Voto</th>
         </tr>
@@ -85,6 +85,13 @@
         <tr>
           <td class="muted" style="font-size:.8rem">{{ loop.index }}</td>
           <td><span class="mono" style="font-size:.95rem">{{ p.ci }}</span></td>
+          <td>
+            {% if p.recinto_id %}
+            <span style="font-size:.85rem">{{ p.recinto.nombre if p.recinto else p.recinto_id }} · Mesa {{ p.mesa_numero }}</span>
+            {% else %}
+            <span class="badge badge-gris">Sin asignar</span>
+            {% endif %}
+          </td>
           <td>
             {% if not p.habilitado %}
             <span class="badge badge-rojo">Inhabilitado</span>

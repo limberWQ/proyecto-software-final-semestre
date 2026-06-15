@@ -80,6 +80,20 @@ def construir(eleccion_id):
 
     return jsonify(resumen)
 
+@bp.route("/distribuir", methods=["POST"])
+@rol_requerido(Usuario.ROL_ADMIN)
+def distribuir(eleccion_id):
+    """Botón 'Distribuir padrón en recintos y mesas'."""
+    try:
+        resumen = padron_service.distribuir_padron(
+            eleccion_id=eleccion_id,
+            usuario_id=int(get_jwt_identity()),
+            ip=request.remote_addr,
+        )
+    except padron_service.PadronError as e:
+        return jsonify({"error": str(e)}), 400
+
+    return jsonify(resumen)
 
 @bp.route("/actualizar", methods=["POST"])
 @rol_requerido(Usuario.ROL_ADMIN)

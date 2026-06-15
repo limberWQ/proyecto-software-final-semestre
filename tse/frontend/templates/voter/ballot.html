@@ -100,9 +100,12 @@ function vincular() {
   var err = document.getElementById('error-codigo');
   if (!codigo) { err.textContent = 'Ingresa el código de vinculación.'; return; }
 
-  // Buscar kiosco por código
+  // Cambiamos el log para ver el error real
   fetch('/api/kioscos/por-codigo/' + encodeURIComponent(codigo))
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) throw new Error('Respuesta del servidor no ok: ' + r.status);
+      return r.json();
+    })
     .then(data => {
       if (!data.kiosco_id) {
         err.textContent = 'Código incorrecto. Verifica con el operador.';
@@ -113,7 +116,10 @@ function vincular() {
       mostrar('espera');
       iniciarPolling();
     })
-    .catch(() => { err.textContent = 'Error de conexión. Intenta nuevamente.'; });
+    .catch(e => {
+      console.error('Error en fetch:', e); // ESTO TE DIRÁ QUÉ ESTÁ PASANDO
+      err.textContent = 'Error de conexión. Revisa la consola (F12).';
+    });
 }
 
 // ── Polling del estado ────────────────────────────────────
@@ -234,7 +240,7 @@ function confirmarVoto() {
   document.getElementById('btn-confirmar').disabled = true;
   document.getElementById('btn-confirmar').textContent = 'Registrando…';
 
-  fetch('/api/votos/emitir', {
+  fetch('/api/votacion/emitir', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({

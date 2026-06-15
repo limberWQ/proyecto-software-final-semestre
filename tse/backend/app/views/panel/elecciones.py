@@ -343,6 +343,23 @@ def construir_padron(eleccion_id):
 
     return redirect(url_for("panel.padron_eleccion", eleccion_id=eleccion_id))
 
+@bp.route("/elecciones/<int:eleccion_id>/padron/distribuir", methods=["POST"])
+@rol_web_requerido(Usuario.ROL_ADMIN)
+def distribuir_padron(eleccion_id):
+    try:
+        resumen = padron_service.distribuir_padron(
+            eleccion_id=eleccion_id,
+            usuario_id=g.usuario["id"],
+            ip=request.remote_addr,
+        )
+        flash(
+            f"Distribución completada: {resumen['asignados']} asignados, "
+            f"{resumen['sin_recintos_disponibles']} sin recinto disponible.",
+            "success",
+        )
+    except padron_service.PadronError as e:
+        flash(str(e), "error")
+    return redirect(url_for("panel.padron_eleccion", eleccion_id=eleccion_id))
 
 @bp.route("/elecciones/<int:eleccion_id>/padron/actualizar", methods=["POST"])
 @rol_web_requerido(Usuario.ROL_ADMIN)
