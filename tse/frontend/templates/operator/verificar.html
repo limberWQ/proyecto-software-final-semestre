@@ -58,72 +58,97 @@
   </table>
 
   {% if not votante.ya_voto and votante.habilitado %}
-<hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
-<h3>Habilitar kiosco</h3>
+  <hr style="border:none;border-top:1px solid var(--line);margin:1rem 0">
+  <h3>Habilitar kiosco</h3>
+  
+  {% set kioscos_activos = [] %}
+  {% for k in (votante.recinto.kioscos if votante.recinto else []) %}
+    {% if k.activo %}{% set _ = kioscos_activos.append(k) %}{% endif %}
+  {% endfor %}
 
-{% set kioscos_activos = [] %}
-{% for k in (votante.recinto.kioscos if votante.recinto else []) %}
-  {% if k.activo %}{% set _ = kioscos_activos.append(k) %}{% endif %}
-{% endfor %}
+  {% if kioscos_activos %}
+    <form method="POST" action="{{ url_for('operador.habilitar_kiosco') }}">
+      <input type="hidden" name="padron_id" value="{{ votante.id }}">
+      
+      <div class="field" style="margin-bottom:1.25rem">
+        {% for k in kioscos_activos %}
+        {% set ocupado = k.id in kiosco_ids_ocupados %}
+        
+        <label id="label-kiosco-{{ k.id }}"
+               style="display:flex; align-items:center; justify-content:space-between; padding:.75rem; border:1px solid var(--line); border-radius:6px; margin-bottom:.5rem; 
+                      cursor: {{ 'not-allowed' if ocupado else 'pointer' }}; 
+                      background: {{ 'var(--bg-soft)' if ocupado else 'transparent' }};
+                      opacity: {{ 0.7 if ocupado else 1 }};">
+          
+          <div style="display:flex; align-items:center; gap:.75rem">
+            <input type="radio" name="kiosco_id" id="radio-kiosco-{{ k.id }}" value="{{ k.id }}" 
+                   {{ 'disabled' if ocupado else '' }} 
+                   {{ 'checked' if not ocupado and loop.first else '' }} 
+                   style="width:18px; height:18px; accent-color: var(--ink);">
+            
+            <div style="display:flex; flex-direction:column">
+              <span style="font-weight:500">{{ k.nombre }}</span>
+              <span class="mono muted" style="font-size:.75rem">{{ k.codigo_vinculacion }}</span>
+            </div>
+          </div>
 
-{% if kioscos_activos %}
-  {% if kioscos_activos|length == 1 %}
-  {# Solo hay un kiosco — habilitar directo sin selección #}
-  <form method="POST" action="{{ url_for('operador.habilitar_kiosco') }}">
-    <input type="hidden" name="padron_id" value="{{ votante.id }}">
-    <input type="hidden" name="kiosco_id" value="{{ kioscos_activos[0].id }}">
-    <p class="muted" style="font-size:.88rem;margin-bottom:.75rem">
-      Kiosco: <strong>{{ kioscos_activos[0].nombre }}</strong>
-      <span class="mono" style="font-size:.8rem">({{ kioscos_activos[0].codigo_vinculacion }})</span>
-    </p>
-    <button type="submit" class="btn btn-verde btn-block"
-            onclick="return confirm('¿Habilitar el kiosco para este votante? Tendrá 5 minutos.')">
-      ▶ Habilitar kiosco
-    </button>
-  </form>
+          <span id="badge-kiosco-{{ k.id }}" class="badge {{ 'badge-rojo' if ocupado else 'badge-verde' }}" style="font-size:.7rem">
+            {{ 'Ocupado' if ocupado else 'Libre' }}
+          </span>
+        </label>
+        {% endfor %}
+      </div>
+
+      <button type="submit" class="btn btn-verde btn-block" 
+              onclick="return confirm('¿Habilitar el kiosco seleccionado para este votante?')">
+        ▶ Habilitar kiosco
+      </button>
+    </form>
+    
+    <script>
+  const kioscoIds = [{% for k in kioscos_activos %}{{ k.id }}{% if not loop.last %},{% endif %}{% endfor %}];
+
+  async function refrescarEstadosKioscos() {
+    try {
+      const response = await fetch("{{ url_for('operador.estado_kioscos_json') }}?ids=" + kioscoIds.join(','));
+      const estados = await response.json();
+
+      Object.keys(estados).forEach(kId => {
+        const ocupado = estados[kId].ocupado;
+        const label = document.getElementById('label-kiosco-' + kId);
+        const radio = document.getElementById('radio-kiosco-' + kId);
+        const badge = document.getElementById('badge-kiosco-' + kId);
+
+        if (label && radio && badge) {
+          label.style.cursor = ocupado ? 'not-allowed' : 'pointer';
+          label.style.background = ocupado ? 'var(--bg-soft)' : 'transparent';
+          label.style.opacity = ocupado ? '0.7' : '1';
+          radio.disabled = ocupado;
+          badge.className = ocupado ? 'badge badge-rojo' : 'badge badge-verde';
+          badge.textContent = ocupado ? 'Ocupado' : 'Libre';
+        }
+      });
+    } catch (e) { console.error("Error actualizando estados:", e); }
+  }
+  setInterval(refrescarEstadosKioscos, 3000);
+</script>
 
   {% else %}
-  {# Hay varios kioscos en el recinto — mostrar selector #}
-  <form method="POST" action="{{ url_for('operador.habilitar_kiosco') }}">
-    <input type="hidden" name="padron_id" value="{{ votante.id }}">
-    <div class="field">
-      <label>Selecciona el kiosco</label>
-      {% for k in kioscos_activos %}
-      <label style="display:flex;gap:.5rem;align-items:center;margin-bottom:.4rem;cursor:pointer">
-        <input type="radio" name="kiosco_id" value="{{ k.id }}" required
-               {{ 'checked' if loop.first else '' }}>
-        <span>{{ k.nombre }}</span>
-        <span class="mono muted" style="font-size:.8rem">{{ k.codigo_vinculacion }}</span>
-      </label>
-      {% endfor %}
-    </div>
-    <button type="submit" class="btn btn-verde btn-block"
-            onclick="return confirm('¿Habilitar el kiosco para este votante?')">
-      ▶ Habilitar kiosco
-    </button>
-  </form>
+    <p class="muted" style="font-size:.88rem">No hay kioscos activos en el recinto.</p>
   {% endif %}
 
-{% else %}
-<p class="muted" style="font-size:.88rem">
-  No hay kioscos activos en el recinto de este votante.
-</p>
-{% endif %}
+  {% elif votante.ya_voto %}
+  <div class="alert alert-error" style="margin-top:1rem">Este ciudadano ya emitió su voto.</div>
+  {% elif not votante.habilitado %}
+  <div class="alert alert-error" style="margin-top:1rem">Inhabilitado: {{ votante.motivo_inhabilitacion or 'sin motivo registrado' }}</div>
+  {% endif %}
 
-{% elif votante.ya_voto %}
-<div class="alert alert-error" style="margin-top:1rem">
-  Este ciudadano ya emitió su voto en esta elección.
 </div>
-{% elif not votante.habilitado %}
-<div class="alert alert-error" style="margin-top:1rem">
-  Inhabilitado: {{ votante.motivo_inhabilitacion or 'sin motivo registrado' }}
-</div>
-{% endif %}
 
 {% elif ci_buscado and not votante %}
 <div class="card mt-1" style="max-width:480px">
   <div class="empty" style="padding:1.25rem">
-    No se encontró el CI <span class="mono">{{ ci_buscado }}</span> en el padrón de esta elección.
+    No se encontró el CI <span class="mono">{{ ci_buscado }}</span> en el padrón.
   </div>
 </div>
 {% endif %}

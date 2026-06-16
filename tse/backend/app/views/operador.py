@@ -21,9 +21,6 @@ def _eleccion_activa_del_operador(recinto_id: int) -> Eleccion | None:
     eleccion = Eleccion.query.filter_by(id=re.eleccion_id, estado="ACTIVA").first()
     return eleccion
 
-
-# ── Verificar votante ─────────────────────────────────────────
-
 @bp.route("/verificar", methods=["GET", "POST"])
 @rol_web_requerido(Usuario.ROL_OPERADOR)
 def verificar():
@@ -31,60 +28,65 @@ def verificar():
     if not recinto_id:
         flash("Tu usuario no está asignado a ningún recinto. Contacta al administrador.", "error")
         return render_template("operator/verificar.html", usuario=g.usuario, active="verificar",
-                               votante=None, eleccion=None)
-
+                               votante=None, eleccion=None, kiosco_ids_ocupados=set())
     eleccion = _eleccion_activa_del_operador(recinto_id)
     votante = None
     ci_buscado = None
-
     if request.method == "POST":
         ci = request.form.get("ci", "").strip()
         ci_buscado = ci
-
         if not ci:
             flash("Ingresa el CI del votante.", "error")
             return redirect(url_for("operador.verificar"))
-
         if not eleccion:
             flash("No hay ninguna elección activa en tu recinto en este momento.", "error")
             return render_template("operator/verificar.html", usuario=g.usuario, active="verificar",
-                                   votante=None, eleccion=None, ci_buscado=ci_buscado)
-
-        # 1. Verificar en SEGIP que existe y está vivo
+                                   votante=None, eleccion=None, ci_buscado=ci_buscado,
+                                   kiosco_ids_ocupados=set())
         try:
             datos_segip = segip_service.verificar_ciudadano(ci)
         except segip_service.SegipError as e:
             flash(f"Error al consultar SEGIP: {e}", "error")
             return redirect(url_for("operador.verificar"))
-
         if not datos_segip:
             flash("CI no encontrado en SEGIP o ciudadano inactivo.", "error")
             return render_template("operator/verificar.html", usuario=g.usuario, active="verificar",
-                                   votante=None, eleccion=eleccion, ci_buscado=ci_buscado)
-
+                                   votante=None, eleccion=eleccion, ci_buscado=ci_buscado,
+                                   kiosco_ids_ocupados=set())
         if not datos_segip.get("vivo", True):
             flash("Este ciudadano figura como fallecido en SEGIP. No puede votar.", "error")
             return render_template("operator/verificar.html", usuario=g.usuario, active="verificar",
-                                   votante=None, eleccion=eleccion, ci_buscado=ci_buscado)
-
-        # 2. Verificar en el padrón de la elección
+                                   votante=None, eleccion=eleccion, ci_buscado=ci_buscado,
+                                   kiosco_ids_ocupados=set())
         registro = padron_service.buscar_votante(eleccion.id, ci)
         if not registro:
             flash("Este CI no está en el padrón de la elección activa.", "error")
             return render_template("operator/verificar.html", usuario=g.usuario, active="verificar",
-                                   votante=None, eleccion=eleccion, ci_buscado=ci_buscado)
-
+                                   votante=None, eleccion=eleccion, ci_buscado=ci_buscado,
+                                   kiosco_ids_ocupados=set())
         if not registro.habilitado:
             flash(f"Votante inhabilitado: {registro.motivo_inhabilitacion or 'sin motivo registrado'}.", "error")
             return render_template("operator/verificar.html", usuario=g.usuario, active="verificar",
-                                   votante=registro, eleccion=eleccion, ci_buscado=ci_buscado)
-
+                                   votante=registro, eleccion=eleccion, ci_buscado=ci_buscado,
+                                   kiosco_ids_ocupados=set())
         if registro.ya_voto:
             flash("Este votante ya emitió su voto en esta elección.", "error")
             return render_template("operator/verificar.html", usuario=g.usuario, active="verificar",
-                                   votante=registro, eleccion=eleccion, ci_buscado=ci_buscado)
-
+                                   votante=registro, eleccion=eleccion, ci_buscado=ci_buscado,
+                                   kiosco_ids_ocupados=set())
         votante = registro
+
+    # Calcular kioscos ocupados para el recinto del votante encontrado
+    kiosco_ids_ocupados = set()
+    if votante and votante.recinto:
+        kiosco_ids = [k.id for k in votante.recinto.kioscos if k.activo]
+        if kiosco_ids:
+            sesiones = SesionKiosco.query.filter(
+                SesionKiosco.kiosco_id.in_(kiosco_ids),
+                SesionKiosco.estado.in_(["PENDIENTE", "ACTIVA"]),
+                SesionKiosco.expira_en > datetime.utcnow(),
+            ).all()
+            kiosco_ids_ocupados = {s.kiosco_id for s in sesiones}
 
     return render_template(
         "operator/verificar.html",
@@ -93,6 +95,7 @@ def verificar():
         votante=votante,
         eleccion=eleccion,
         ci_buscado=ci_buscado,
+        kiosco_ids_ocupados=kiosco_ids_ocupados,
     )
 
 
@@ -250,4 +253,28 @@ def estado_kiosco_json(kiosco_id):
         "segundos_restantes": sesion.segundos_restantes,
         "eleccion": {"id": eleccion.id, "titulo": eleccion.titulo},
         "candidatos": candidatos,
+    })
+
+@bp.route("/kioscos/estado-json")
+@rol_web_requerido(Usuario.ROL_OPERADOR)
+def estado_kioscos_json():
+    """Polling batch desde la vista verificar: devuelve estado ocupado/libre de varios kioscos."""
+    ids_str = request.args.get("ids", "")
+    try:
+        kiosco_ids = [int(i) for i in ids_str.split(",") if i.strip()]
+    except ValueError:
+        return jsonify({}), 400
+
+    sesiones_activas = set()
+    if kiosco_ids:
+        sesiones = SesionKiosco.query.filter(
+            SesionKiosco.kiosco_id.in_(kiosco_ids),
+            SesionKiosco.estado.in_(["PENDIENTE", "ACTIVA"]),
+            SesionKiosco.expira_en > datetime.utcnow(),
+        ).all()
+        sesiones_activas = {s.kiosco_id for s in sesiones}
+
+    return jsonify({
+        str(kid): {"ocupado": kid in sesiones_activas}
+        for kid in kiosco_ids
     })

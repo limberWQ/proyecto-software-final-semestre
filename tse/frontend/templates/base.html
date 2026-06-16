@@ -18,9 +18,8 @@
 
       {% if usuario %}
       <nav class="nav">
-        <a href="{{ url_for('panel.inicio') }}" class="{{ 'active' if active=='inicio' else '' }}">Inicio</a>
-
         {% if usuario.rol_id == 1 %}
+          <a href="{{ url_for('panel.inicio') }}" class="{{ 'active' if active=='inicio' else '' }}">Inicio</a>
           <a href="{{ url_for('panel.elecciones') }}" class="{{ 'active' if active=='elecciones' else '' }}">Elecciones</a>
           <a href="{{ url_for('panel.recintos') }}" class="{{ 'active' if active=='recintos' else '' }}">Recintos y kioscos</a>
           <a href="{{ url_for('panel.usuarios') }}" class="{{ 'active' if active=='usuarios' else '' }}">Usuarios</a>
@@ -28,6 +27,7 @@
           <a href="{{ url_for('panel.resultados_general') }}" class="{{ 'active' if active=='resultados' else '' }}">Resultados</a>
           <a href="{{ url_for('panel.auditoria') }}" class="{{ 'active' if active=='auditoria' else '' }}">Auditoría</a>
         {% elif usuario.rol_id == 2 %}
+          <a href="{{ url_for('panel.dashboard_operador') }}" class="{{ 'active' if active=='inicio' else '' }}">Inicio</a>
           <a href="{{ url_for('operador.verificar') }}" class="{{ 'active' if active=='verificar' else '' }}">Verificar votante</a>
           <a href="{{ url_for('operador.kiosco') }}" class="{{ 'active' if active=='kiosco' else '' }}">Mi kiosco</a>
         {% elif usuario.rol_id == 3 %}

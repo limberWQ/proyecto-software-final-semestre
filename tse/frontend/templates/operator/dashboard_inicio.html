@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Dashboard Operador{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div class="eyebrow">Dashboard en tiempo real</div>
+    <h1>Recinto: {{ recinto.nombre }}</h1>
+  </div>
+</div>
+
+<div class="card-row">
+  <div class="stat"><div class="num">{{ total }}</div><div class="label">Total inscritos</div></div>
+  <div class="stat"><div class="num" id="stat-votaron" style="color:var(--verde)">{{ total_votaron }}</div><div class="label">Ya votaron</div></div>
+  <div class="stat"><div class="num" id="stat-pendientes" style="color:var(--ink-soft)">{{ total_no_votaron }}</div><div class="label">Pendientes</div></div>
+</div>
+
+<div class="card mt-1">
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>CI</th><th>Mesa</th><th>Voto</th></tr></thead>
+      <tbody id="tabla-padron">
+        {% for p in padron %}
+        <tr id="row-{{ p.id }}">
+          <td class="mono">{{ p.ci }}</td>
+          <td>{{ p.mesa_numero }}</td>
+          <td>
+            <span class="badge {{ 'badge-verde' if p.ya_voto else 'badge-gris' }}" id="badge-{{ p.id }}">
+                {{ '✓ Votó' if p.ya_voto else 'Pendiente' }}
+            </span>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<script>
+async function actualizarDashboard() {
+  const res = await fetch("{{ url_for('panel.api_estado_recinto') }}");
+  const data = await res.json();
+  
+  document.getElementById('stat-votaron').textContent = data.total_votaron;
+  document.getElementById('stat-pendientes').textContent = data.total_no_votaron;
+  
+}
+setInterval(actualizarDashboard, 5000);
+</script>
+{% endblock %}

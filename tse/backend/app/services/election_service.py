@@ -181,3 +181,16 @@ def recintos_de_eleccion(eleccion_id: int) -> list[Recinto]:
         .filter(RecintoEleccion.eleccion_id == eleccion_id)
         .all()
     )
+
+def obtener_eleccion_activa_por_recinto(recinto_id: int) -> Eleccion | None:
+    """
+    Busca una elección que esté en estado 'ACTIVA' y que tenga
+    asignado el recinto dado a través de la tabla intermedia RecintoEleccion.
+    """
+    return (
+        Eleccion.query
+        .join(RecintoEleccion, RecintoEleccion.eleccion_id == Eleccion.id)
+        .filter(RecintoEleccion.recinto_id == recinto_id)
+        .filter(Eleccion.estado == "ACTIVA")
+        .first()
+    )
