@@ -50,13 +50,12 @@ def resultados_eleccion(eleccion_id):
     total_votos = PadronElectoral.query.filter_by(eleccion_id=eleccion_id, ya_voto=True).count()
     participacion = round(total_votos / total_padron * 100, 1) if total_padron else 0
 
-    conteos = []
+    conteos = {}
     if eleccion.estado == "CERRADA":
         try:
-            res = conteo_service.obtener_resultados(eleccion_id)
-            conteos = res.get("conteos", [])
+            conteos = conteo_service.obtener_resultados(eleccion_id)
         except Exception:
-            conteos = []
+            conteos = {}
 
     blockchain = Blockchain.get_instance(eleccion_id)
     total_bloques = blockchain.longitud

@@ -112,14 +112,15 @@ def obtener_resultados(eleccion_id: int) -> dict:
     participacion = participacion_eleccion(eleccion_id)
 
     resultado = {
-        "eleccion_id": eleccion.id,
-        "titulo": eleccion.titulo,
-        "estado": eleccion.estado,
-        "participacion": participacion,
-        "detalle_disponible": eleccion.estado == "CERRADA",
-        "candidatos": [],
-        "blancos": None,
-        "nulos": None,
+    "eleccion_id": eleccion.id,
+    "titulo": eleccion.titulo,
+    "estado": eleccion.estado,
+    "participacion": participacion,
+    "detalle_disponible": eleccion.estado == "CERRADA",
+    "candidatos": [],
+    "validos": None,   # <-- agregar
+    "blancos": None,
+    "nulos": None,
     }
 
     if eleccion.estado != "CERRADA":
@@ -152,6 +153,7 @@ def obtener_resultados(eleccion_id: int) -> dict:
         )
 
     resultado["candidatos"].sort(key=lambda c: c["votos"], reverse=True)
+    resultado["validos"] = total_validos
     resultado["blancos"] = conteos.get((None, "BLANCO"), 0)
     resultado["nulos"] = conteos.get((None, "NULO"), 0)
 
